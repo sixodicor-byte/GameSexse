@@ -1,5 +1,5 @@
-
-
+-- fixed by pivovar
+-- for use my lib use: loadstring(game:HttpGet("https://raw.githubusercontent.com/sixodicor-byte/GameSexse/refs/heads/main/GameSense.lua"))()
 
 
 
@@ -359,15 +359,15 @@ getgenv().Loaded = true
         function Library:ConvertEnum(enum)
             local EnumParts = {}
             
-            for part in string.gmatch(enum, "[%w_]+") do
-                insert(EnumParts, part)
+            for part in string.gmatch(tostring(enum), "[%w_]+") do
+                table.insert(EnumParts, part)
             end
         
             local EnumTable = Enum
 
             for i = 2, #EnumParts do
                 local EnumItem = EnumTable[EnumParts[i]]
-        
+                if EnumItem == nil then return nil end
                 EnumTable = EnumItem
             end
             
@@ -793,41 +793,69 @@ getgenv().Loaded = true
             local Config = {}
             
             for Idx, Value in Flags do
-                if type(Value) == "table" and Value.Key then
-                    Config[Idx] = {active = Value.Active, mode = Value.Mode, key = tostring(Value.Key)}
-                elseif type(Value) == "table" and Value["Transparency"] and Value["Color"] then
-                    Config[Idx] = {Transparency = Value["Transparency"], Color = Value["Color"]:ToHex()}
-                else
+                if type(Value) == "table" and Value.Key ~= nil then
+                    -- keybind
+                    Config[Idx] = {active = Value.Active or false, mode = Value.Mode or "Toggle", key = tostring(Value.Key)}
+                elseif type(Value) == "table" and Value["Color"] ~= nil and Value["Transparency"] ~= nil then
+                    -- colorpicker
+                    local col = Value["Color"]
+                    local hexStr = typeof(col) == "Color3" and col:ToHex() or tostring(col)
+                    Config[Idx] = {Color = hexStr, Transparency = Value["Transparency"]}
+                elseif typeof(Value) == "Color3" then
+                    Config[Idx] = {Color = Value:ToHex(), Transparency = 0}
+                elseif typeof(Value) == "EnumItem" then
+                    Config[Idx] = tostring(Value)
+                elseif type(Value) == "boolean" or type(Value) == "number" or type(Value) == "string" then
                     Config[Idx] = Value
+                elseif type(Value) == "table" then
+                    -- dropdown multi-select or other plain tables
+                    local safe = {}
+                    for k, v in Value do
+                        if type(v) == "boolean" or type(v) == "number" or type(v) == "string" then
+                            safe[k] = v
+                        end
+                    end
+                    Config[Idx] = safe
                 end
             end 
 
-            return HttpService:JSONEncode(Config)
+            local ok, result = pcall(function() return HttpService:JSONEncode(Config) end)
+            return ok and result or "{}"
         end
 
-        function Library:LoadConfig(JSON) 
-            local Config = HttpService:JSONDecode(JSON)
+        function Library:LoadConfig(JSON)
+            local ok, Config = pcall(function() return HttpService:JSONDecode(JSON) end)
+            if not ok or type(Config) ~= "table" then return end
             
             for Idx, Value in Config do                
-                if Idx == "config_name_list" then 
+                if Idx == "config_name_list" or Idx == "ConfigList" or Idx == "ConfigName" then 
                     continue 
                 end
 
                 local Function = ConfigFlags[Idx]
 
-                if Function then 
-                    if type(Value) == "table" and Value["Transparency"] and Value["Color"] then
-                        Function(hex(Value["Color"]), Value["Transparency"])
-                    elseif type(Value) == "table" and Value["Active"] then 
-                        Function(Value)
-                    else
-                        Function(Value)
-                    end
+                if Function then
+                    local callOk = pcall(function()
+                        if type(Value) == "table" and Value["Color"] ~= nil and Value["Transparency"] ~= nil then
+                            -- colorpicker
+                            Function(hex(Value["Color"]), Value["Transparency"])
+                        elseif type(Value) == "table" and (Value["active"] ~= nil or Value["Active"] ~= nil or Value["key"] ~= nil) then
+                            -- keybind — normalize to what the lib expects
+                            Function({
+                                Active = Value["active"] or Value["Active"] or false,
+                                Mode   = Value["mode"]   or Value["Mode"]   or "Toggle",
+                                Key    = Value["key"]    or Value["Key"]    or "None",
+                            })
+                        else
+                            Function(Value)
+                        end
+                    end)
                 end 
             end 
         end 
         
         function Library:Round(num, float) 
+            num = tonumber(num) or (type(num) == "string" and tonumber(num:match("[-%d%.]+"))) or 0
             local Multiplier = 1 / (float or 1)
             return math.floor(num * Multiplier + 0.5) / Multiplier
         end
@@ -1910,7 +1938,8 @@ getgenv().Loaded = true
             end 
 
             function Cfg.Set(value)
-                Cfg.Value = math.clamp(Library:Round(value, Cfg.Intervals), Cfg.Min, Cfg.Max)
+                local num = tonumber(value) or (type(value) == "string" and tonumber(value:match("[-%d%.]+"))) or Cfg.Value or Cfg.Min
+                Cfg.Value = math.clamp(Library:Round(num, Cfg.Intervals), Cfg.Min, Cfg.Max)
 
                 Items.Accent.Size = dim2((Cfg.Value - Cfg.Min) / (Cfg.Max - Cfg.Min), Cfg.Value == Cfg.Min and 0 or -2, 1, -2)
                 Items.Value.Text = tostring(Cfg.Value) .. Cfg.Suffix
@@ -2227,9 +2256,6 @@ getgenv().Loaded = true
                             
                             Cfg.Set(Cfg.MultiItems) 				
                         else 
-                            Cfg.SetVisible(false)
-                            Cfg.Open = false
-                            
                             Cfg.Set(Button.Text)
                         end
                     end)
@@ -2723,7 +2749,7 @@ getgenv().Loaded = true
                         active = input.active
                     end
 
-                    key = type(key) == "string" and key ~= "NONE" and Library:ConvertEnum(key) or key
+                    key = type(key) == "string" and key ~= "NONE" and key:find("Enum") and Library:ConvertEnum(key) or key
                     key = key == Enum.KeyCode.Escape and "NONE" or key
 
                     Cfg.Key = key or "NONE"
@@ -3433,7 +3459,7 @@ getgenv().Loaded = true
                 local Width = 150
 
                 for _, Entry in ipairs(Cfg.Entries) do
-                    local Plain = string.format("[%s]  %s", tostring(Entry.Key), tostring(Entry.Name))
+                    local Plain = (Entry.Key and Entry.Key ~= "" and Entry.Key ~= "?") and string.format("[%s]  %s", tostring(Entry.Key), tostring(Entry.Name)) or tostring(Entry.Name)
                     local Size = TextService:GetTextSize(Plain, 13, Enum.Font.SourceSans, vec2(10000, 10000))
 
                     if Size.X + 32 > Width then
@@ -3473,7 +3499,7 @@ getgenv().Loaded = true
             function Cfg:Add(name, key)
                 local Entry = {
                     Name = name or "Key";
-                    Key = key or "?";
+                    Key = key or "";
                     Active = false;
                     Row = Library:Create( "TextLabel" , {
                         Parent = Items.Container;
@@ -3493,7 +3519,11 @@ getgenv().Loaded = true
                 function Entry:SetText(newName, newKey)
                     if newName ~= nil then Entry.Name = tostring(newName) end
                     if newKey ~= nil then Entry.Key = tostring(newKey) end
-                    Entry.Row.Text = string.format('<font color="#%s">[%s]</font>  %s', Accent, Entry.Key, Entry.Name)
+                    if Entry.Key and Entry.Key ~= "" and Entry.Key ~= "?" then
+                        Entry.Row.Text = string.format('<font color="#%s">[%s]</font>  %s', Accent, Entry.Key, Entry.Name)
+                    else
+                        Entry.Row.Text = Entry.Name
+                    end
                     Resize()
                     return Entry
                 end
@@ -3537,6 +3567,15 @@ getgenv().Loaded = true
         return setmetatable(Cfg, Library)
     end
 
+    local fpsTimes = {}
+    Library:Connection(RunService.RenderStepped, function()
+        local now = os.clock()
+        table.insert(fpsTimes, now)
+        while #fpsTimes > 0 and fpsTimes[1] < now - 1 do
+            table.remove(fpsTimes, 1)
+        end
+    end)
+
     Library.WatermarkOptions = {
         gamesense = true,
         fps = true,
@@ -3545,7 +3584,7 @@ getgenv().Loaded = true
         config = false,
     }
 
-    function Library:UpdateWatermarkText(dt)
+    function Library:UpdateWatermarkText()
         local opts = Library.WatermarkOptions
         local parts = {}
 
@@ -3558,7 +3597,7 @@ getgenv().Loaded = true
         end
 
         if opts.fps then
-            table.insert(parts, string.format("%dfps", math.floor(1 / math.max(dt, 1/1000))))
+            table.insert(parts, string.format("%dfps", #fpsTimes))
         end
 
         if opts.ping then
@@ -3587,20 +3626,58 @@ getgenv().Loaded = true
 
         if bool and not Library.WatermarkLoop then
             local last = 0
+            local interval = 1 / 120
 
             Library.WatermarkLoop = Library:Connection(RunService.Heartbeat, function(dt)
                 last += dt
 
-                if last < 0.25 then
+                if last < interval then
                     return
                 end
 
-                Library:UpdateWatermarkText(last)
+                Library:UpdateWatermarkText()
                 last = 0
             end)
         elseif not bool and Library.WatermarkLoop then
             Library.WatermarkLoop:Disconnect()
             Library.WatermarkLoop = nil
+        end
+    end
+
+    local keybindEntries = {}
+    local function updateKeybindList()
+        local kbList = Library.KeybindListInstance
+        if not kbList or not kbList.Visible then
+            return
+        end
+
+        local activeBinds = {}
+        for flag, data in pairs(Library.Flags) do
+            if type(data) == "table" and data.Key and data.Key ~= "NONE" and data.Active then
+                local keyName = tostring(data.Key):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
+                local displayName = data.Name or flag
+                table.insert(activeBinds, { name = displayName, key = keyName, flag = flag })
+            end
+        end
+
+        local changed = #activeBinds ~= #keybindEntries
+        if not changed then
+            for i, b in ipairs(activeBinds) do
+                local cur = keybindEntries[i]
+                if not cur or cur.flag ~= b.flag or cur.key ~= b.key or cur.name ~= b.name then
+                    changed = true
+                    break
+                end
+            end
+        end
+
+        if changed then
+            kbList:Clear()
+            keybindEntries = activeBinds
+            for _, b in ipairs(activeBinds) do
+                local entry = kbList:Add(b.name, b.key)
+                entry:SetStatus(true)
+            end
         end
     end
 
@@ -3610,7 +3687,82 @@ getgenv().Loaded = true
         end
 
         Library.KeybindListInstance:SetVisibility(bool)
+
+        if bool and not Library.KeybindListLoop then
+            local last = 0
+            local interval = 1 / 120
+
+            Library.KeybindListLoop = Library:Connection(RunService.Heartbeat, function(dt)
+                last += dt
+
+                if last < interval then
+                    return
+                end
+
+                updateKeybindList()
+                last = 0
+            end)
+        elseif not bool and Library.KeybindListLoop then
+            Library.KeybindListLoop:Disconnect()
+            Library.KeybindListLoop = nil
+        end
     end
 
+    -- Helpers for callers that want to group controls without auto-creating UI.
+    function Library:SetControlVisible(control, visible, itemName)
+        local item = control and control.Items and control.Items[itemName]
+        if item then
+            item.Visible = visible == true
+            return true
+        end
+        return false
+    end
+
+    function Library:ControlGroup(section)
+        local group = { Section = section, Controls = {} }
+
+        function group:AddToggle(properties)
+            local control = self.Section:Toggle(properties)
+            Library:SetControlVisible(control, false, "Toggle")
+            table.insert(self.Controls, control)
+            return control
+        end
+
+        function group:SetVisible(visible)
+            for _, control in ipairs(self.Controls) do
+                Library:SetControlVisible(control, visible, "Toggle")
+            end
+        end
+
+        return group
+    end
+
+    function Library:Unload()
+        if Library.WatermarkLoop then
+            pcall(function() Library.WatermarkLoop:Disconnect() end)
+            Library.WatermarkLoop = nil
+        end
+        if Library.KeybindListLoop then
+            pcall(function() Library.KeybindListLoop:Disconnect() end)
+            Library.KeybindListLoop = nil
+        end
+        if Library.WatermarkWindow then
+            pcall(function() Library.WatermarkWindow:Destroy() end)
+        end
+        if Library.KeybindsWindow then
+            pcall(function() Library.KeybindsWindow:Destroy() end)
+        end
+        if Library.Items then
+            pcall(function() Library.Items:Destroy() end)
+        end
+        if Library.Other then
+            pcall(function() Library.Other:Destroy() end)
+        end
+        for _, connection in Library.Connections or {} do
+            pcall(function() connection:Disconnect() end)
+        end
+        getgenv().Loaded = false
+        getgenv().Library = nil
+    end
 
 return Library
