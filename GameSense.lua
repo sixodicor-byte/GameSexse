@@ -1,5 +1,5 @@
--- fixed by pivovar
--- for use my lib use: loadstring(game:HttpGet("https://raw.githubusercontent.com/sixodicor-byte/GameSexse/refs/heads/main/GameSense.lua"))()
+
+
 
 
 
@@ -48,8 +48,8 @@ getgenv().Loaded = true
         Flags = {},
         ConfigFlags = {},
         Connections = {},   
-        Notifications = {Notifs = {}, NextId = 0},
-        OpenElement = nil;
+        Notifications = {Notifs = {}},
+        OpenElement = {};
         OpenPopups = {};
         EasingStyle = Enum.EasingStyle.Quint;
         TweeningSpeed = 0.25
@@ -121,7 +121,7 @@ getgenv().Loaded = true
         [Enum.KeyCode.RightBracket] = "]",
         [Enum.KeyCode.RightParenthesis] = ")",
         [Enum.KeyCode.LeftParenthesis] = "(",
-                [Enum.KeyCode.Semicolon] = ";",
+        [Enum.KeyCode.Semicolon] = ",",
         [Enum.KeyCode.Quote] = "'",
         [Enum.KeyCode.BackSlash] = "\\",
         [Enum.KeyCode.Comma] = ",",
@@ -226,7 +226,7 @@ getgenv().Loaded = true
                     task.wait()
                     obj[prop] = OldTransparency
                 end
-            end, true)
+            end)
 
             return Tween
         end
@@ -359,15 +359,15 @@ getgenv().Loaded = true
         function Library:ConvertEnum(enum)
             local EnumParts = {}
             
-            for part in string.gmatch(tostring(enum), "[%w_]+") do
-                table.insert(EnumParts, part)
+            for part in string.gmatch(enum, "[%w_]+") do
+                insert(EnumParts, part)
             end
         
             local EnumTable = Enum
 
             for i = 2, #EnumParts do
                 local EnumItem = EnumTable[EnumParts[i]]
-                if EnumItem == nil then return nil end
+        
                 EnumTable = EnumItem
             end
             
@@ -407,31 +407,17 @@ getgenv().Loaded = true
                 Items = {};
             }
 
-            local DraggingSat = false
-            local DraggingHue = false
-            local DraggingAlpha = false
+            local DraggingSat = false 
+            local DraggingHue = false 
+            local DraggingAlpha = false 
 
             local h, s, v = Cfg.Color:ToHSV() 
             local a = Cfg.Alpha 
 
-            local componentOrder = #self.Items.Components:GetChildren()
-
             Flags[Cfg.Flag] = {Color = Cfg.Color, Transparency = Cfg.Alpha}
             
             local Items = Cfg.Items; do 
-                    Items.ColorpickerLabel = Library:Create( "TextLabel" , {
-                        Parent = self.Items.Components;
-                        Name = "\0";
-                        AutomaticSize = Enum.AutomaticSize.XY;
-                        BackgroundTransparency = 1;
-                        FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal);
-                        Text = Cfg.Name;
-                        TextColor3 = rgb(205, 205, 205);
-                        TextSize = 10;
-                        BorderSizePixel = 0;
-                        LayoutOrder = componentOrder + 1;
-                    });
-
+                
                     Items.ColorpickerObject = Library:Create( "TextButton" , {
                         Active = false;
                         BorderColor3 = rgb(0, 0, 0);
@@ -440,7 +426,6 @@ getgenv().Loaded = true
                         Name = "\0";
                         Parent = self.Items.Components;
                         Size = dim2(0, 17, 0, 9);
-                        LayoutOrder = componentOrder + 2;
                         Selectable = false;
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(12, 12, 12)
@@ -587,7 +572,7 @@ getgenv().Loaded = true
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(0, 0, 0)
                     });
-
+                    
                     Items.AlphaInline = Library:Create( "Frame" , {
                         Parent = Items.Alpha;
                         Name = "\0";
@@ -596,6 +581,13 @@ getgenv().Loaded = true
                         Size = dim2(1, -2, 1, -2);
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(0, 221, 255)
+                    });
+
+                    Library:Create( "UIGradient" , {
+                        Rotation = 0;
+                        Transparency = numseq{numkey(0, 0), numkey(1, 1)};
+                        Parent = Items.AlphaInline;
+                        Color = rgbseq{rgbkey(0, rgb(255, 255, 255)), rgbkey(1, rgb(255, 255, 255))}
                     });
                     
                     Items.AlphaPicker = Library:Create( "Frame" , {
@@ -710,20 +702,72 @@ getgenv().Loaded = true
                 Cfg.Callback(Color, a)
             end
 
-            function Cfg.UpdateColor()
-                local relX = (mouse.X - Items.Val.AbsolutePosition.X) / Items.Val.AbsoluteSize.X
-                local relY = (mouse.Y - Items.Val.AbsolutePosition.Y) / Items.Val.AbsoluteSize.Y
+            local LastMouse = nil
+            local HoverCal = nil
 
-                if DraggingSat then
-                    s = math.clamp(relX, 0, 1)
-                    v = 1 - math.clamp(relY, 0, 1)
-                elseif DraggingHue then
-                    h = math.clamp((mouse.Y - Items.Hue.AbsolutePosition.Y) / Items.Hue.AbsoluteSize.Y, 0, 1)
-                elseif DraggingAlpha then
-                    a = math.clamp((mouse.X - Items.Alpha.AbsolutePosition.X) / Items.Alpha.AbsoluteSize.X, 0, 1)
+            Items.Debug = Library:Create("TextLabel", {
+                Parent = Items.Colorpicker;
+                Size = dim2(1, 0, 0, 12);
+                Position = dim2(0, 0, 0, 0);
+                BackgroundColor3 = rgb(0, 0, 0);
+                BackgroundTransparency = 0.3;
+                TextColor3 = rgb(0, 255, 0);
+                TextSize = 10;
+                FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+                TextXAlignment = Enum.TextXAlignment.Left;
+                Text = "no hover yet";
+                ZIndex = 20000;
+                BorderSizePixel = 0;
+                Name = "\0"
+            });
+
+            local function TrackCal(guiPos)
+                local gl = InputService:GetMouseLocation()
+                HoverCal = {gl = vec2(gl.X, gl.Y), gui = guiPos}
+
+                if Items.Debug then
+                    Items.Debug.Text = string.format(
+                        "MM %d,%d | GL %d,%d | VAL %d,%d %dx%d",
+                        guiPos.X, guiPos.Y,
+                        gl.X, gl.Y,
+                        Items.Val.AbsolutePosition.X, Items.Val.AbsolutePosition.Y,
+                        Items.Val.AbsoluteSize.X, Items.Val.AbsoluteSize.Y
+                    )
+                end
+            end
+
+            Items.Val.MouseMoved:Connect(function(x, y) TrackCal(vec2(x, y)) end)
+            Items.Hue.MouseMoved:Connect(function(x, y) TrackCal(vec2(x, y)) end)
+            Items.Alpha.MouseMoved:Connect(function(x, y) TrackCal(vec2(x, y)) end)
+
+            local function MouseGuiPos()
+                if not HoverCal then
+                    return nil
                 end
 
-                Cfg.Set()
+                local gl = InputService:GetMouseLocation()
+                return HoverCal.gui + (gl - HoverCal.gl)
+            end
+
+            function Cfg.UpdateColor(input)
+                local m = input.Position
+
+                if LastMouse then
+                    local dx, dy = m.X - LastMouse.X, m.Y - LastMouse.Y
+
+                    if DraggingSat then
+                        s = math.clamp(s + dx / Items.Val.AbsoluteSize.X, 0, 1)
+                        v = math.clamp(v - dy / Items.Val.AbsoluteSize.Y, 0, 1)
+                    elseif DraggingHue then
+                        h = math.clamp(h + dy / Items.Hue.AbsoluteSize.Y, 0, 1)
+                    elseif DraggingAlpha then
+                        a = math.clamp(a + dx / Items.Alpha.AbsoluteSize.X, 0, 1)
+                    end
+
+                    Cfg.Set()
+                end
+
+                LastMouse = m
             end
 
             Items.ColorpickerObject.MouseButton1Click:Connect(function()
@@ -731,9 +775,9 @@ getgenv().Loaded = true
                 Cfg.SetVisible(Cfg.Open)            
             end)
 
-            Library:Connection(InputService.InputChanged, function(input)
+            InputService.InputChanged:Connect(function(input)
                 if (DraggingSat or DraggingHue or DraggingAlpha) and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    Cfg.UpdateColor()
+                    Cfg.UpdateColor(input)
                 end
             end)
 
@@ -786,14 +830,36 @@ getgenv().Loaded = true
 
             Items.Alpha.MouseButton1Down:Connect(function()
                 DraggingAlpha = true
+                LastMouse = nil
+
+                local mp = MouseGuiPos()
+                if mp then
+                    a = math.clamp((mp.X - Items.Alpha.AbsolutePosition.X) / Items.Alpha.AbsoluteSize.X, 0, 1)
+                    Cfg.Set()
+                end
             end)
 
             Items.Hue.MouseButton1Down:Connect(function()
                 DraggingHue = true
+                LastMouse = nil
+
+                local mp = MouseGuiPos()
+                if mp then
+                    h = math.clamp((mp.Y - Items.Hue.AbsolutePosition.Y) / Items.Hue.AbsoluteSize.Y, 0, 1)
+                    Cfg.Set()
+                end
             end)
 
             Items.Val.MouseButton1Down:Connect(function()
                 DraggingSat = true
+                LastMouse = nil
+
+                local mp = MouseGuiPos()
+                if mp then
+                    s = math.clamp((mp.X - Items.Val.AbsolutePosition.X) / Items.Val.AbsoluteSize.X, 0, 1)
+                    v = 1 - math.clamp((mp.Y - Items.Val.AbsolutePosition.Y) / Items.Val.AbsoluteSize.Y, 0, 1)
+                    Cfg.Set()
+                end
             end)
 
             Cfg.Set(Cfg.Color, Cfg.Alpha)
@@ -808,69 +874,41 @@ getgenv().Loaded = true
             local Config = {}
             
             for Idx, Value in Flags do
-                if type(Value) == "table" and Value.Key ~= nil then
-                    -- keybind
-                    Config[Idx] = {active = Value.Active or false, mode = Value.Mode or "Toggle", key = tostring(Value.Key)}
-                elseif type(Value) == "table" and Value["Color"] ~= nil and Value["Transparency"] ~= nil then
-                    -- colorpicker
-                    local col = Value["Color"]
-                    local hexStr = typeof(col) == "Color3" and col:ToHex() or tostring(col)
-                    Config[Idx] = {Color = hexStr, Transparency = Value["Transparency"]}
-                elseif typeof(Value) == "Color3" then
-                    Config[Idx] = {Color = Value:ToHex(), Transparency = 0}
-                elseif typeof(Value) == "EnumItem" then
-                    Config[Idx] = tostring(Value)
-                elseif type(Value) == "boolean" or type(Value) == "number" or type(Value) == "string" then
+                if type(Value) == "table" and Value.Key then
+                    Config[Idx] = {active = Value.Active, mode = Value.Mode, key = tostring(Value.Key)}
+                elseif type(Value) == "table" and Value["Transparency"] and Value["Color"] then
+                    Config[Idx] = {Transparency = Value["Transparency"], Color = Value["Color"]:ToHex()}
+                else
                     Config[Idx] = Value
-                elseif type(Value) == "table" then
-                    -- dropdown multi-select or other plain tables
-                    local safe = {}
-                    for k, v in Value do
-                        if type(v) == "boolean" or type(v) == "number" or type(v) == "string" then
-                            safe[k] = v
-                        end
-                    end
-                    Config[Idx] = safe
                 end
             end 
 
-            local ok, result = pcall(function() return HttpService:JSONEncode(Config) end)
-            return ok and result or "{}"
+            return HttpService:JSONEncode(Config)
         end
 
-        function Library:LoadConfig(JSON)
-            local ok, Config = pcall(function() return HttpService:JSONDecode(JSON) end)
-            if not ok or type(Config) ~= "table" then return end
+        function Library:LoadConfig(JSON) 
+            local Config = HttpService:JSONDecode(JSON)
             
             for Idx, Value in Config do                
-                if Idx == "config_name_list" or Idx == "ConfigList" or Idx == "ConfigName" then 
+                if Idx == "config_name_list" then 
                     continue 
                 end
 
                 local Function = ConfigFlags[Idx]
 
-                if Function then
-                    local callOk = pcall(function()
-                        if type(Value) == "table" and Value["Color"] ~= nil and Value["Transparency"] ~= nil then
-                            -- colorpicker
-                            Function(hex(Value["Color"]), Value["Transparency"])
-                        elseif type(Value) == "table" and (Value["active"] ~= nil or Value["Active"] ~= nil or Value["key"] ~= nil) then
-                            -- keybind — normalize to what the lib expects
-                            Function({
-                                Active = Value["active"] or Value["Active"] or false,
-                                Mode   = Value["mode"]   or Value["Mode"]   or "Toggle",
-                                Key    = Value["key"]    or Value["Key"]    or "None",
-                            })
-                        else
-                            Function(Value)
-                        end
-                    end)
+                if Function then 
+                    if type(Value) == "table" and Value["Transparency"] and Value["Color"] then
+                        Function(hex(Value["Color"]), Value["Transparency"])
+                    elseif type(Value) == "table" and Value["Active"] then 
+                        Function(Value)
+                    else
+                        Function(Value)
+                    end
                 end 
             end 
         end 
         
         function Library:Round(num, float) 
-            num = tonumber(num) or (type(num) == "string" and tonumber(num:match("[-%d%.]+"))) or 0
             local Multiplier = 1 / (float or 1)
             return math.floor(num * Multiplier + 0.5) / Multiplier
         end
@@ -894,47 +932,34 @@ getgenv().Loaded = true
 
 
 
-        function Library:Disconnect(connection)
-            if not connection then
-                return false
-            end
-
-            connection:Disconnect()
-            for i = #Library.Connections, 1, -1 do
-                if Library.Connections[i] == connection then
-                    table.remove(Library.Connections, i)
-                end
-            end
-            return true
-        end
-
-        function Library:Connection(signal, callback, once)
-            local connection
-            connection = signal:Connect(function(...)
-                if once then
-                    Library:Disconnect(connection)
-                end
-                callback(...)
-            end)
-
+        function Library:Connection(signal, callback)
+            local connection = signal:Connect(callback)
+            
             table.insert(Library.Connections, connection)
-            return connection
+
+            return connection 
         end
 
-        function Library:CloseElement(except)
-            local active = Library.OpenElement
-            if not active or active == except or active.Ignore then
-                return
+        function Library:CloseElement() 
+            local IsMulti = typeof(Library.OpenElement)
+
+            if not Library.OpenElement then 
+                return 
             end
 
-            active.Open = false
-            if active.SetVisible then
-                active.SetVisible(false)
+            for i = 1, #Library.OpenElement do
+                local Data = Library.OpenElement[i]
+
+                if Data.Ignore then 
+                    continue 
+                end 
+
+                Data.SetVisible(false)
+                Data.Open = false
             end
-            if Library.OpenElement == active then
-                Library.OpenElement = nil
-            end
-        end
+
+            Library.OpenElement = {}
+		end
 
         function Library:ClosePopups()
             for _, popup in Library.OpenPopups do
@@ -946,23 +971,18 @@ getgenv().Loaded = true
         end
 
         function Library:Create(instance, options)
-            local ins = Instance.new(instance)
-            options = options or {}
-
-            if instance == "TextButton" then
-                if options.AutoButtonColor == nil then
-                    ins.AutoButtonColor = false
-                end
-                if options.Text == nil then
-                    ins.Text = ""
-                end
-            end
+            local ins = Instance.new(instance) 
 
             for prop, value in options do
                 ins[prop] = value
             end
 
-            return ins
+            if ins == "TextButton" then 
+                ins["AutoButtonColor"] = false 
+                ins["Text"] = ""
+            end 
+            
+            return ins 
         end
 
         function Library:Unload() 
@@ -1074,7 +1094,7 @@ getgenv().Loaded = true
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
                     
-                    Items.ImageLabel = Library:Create( "ImageLabel" , {
+                    Library:Create( "ImageLabel" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = Items.InnerPage;
                         Size = dim2(1, -2, 0, 2);
@@ -1266,7 +1286,7 @@ getgenv().Loaded = true
                     Cfg.Tweening = false
                     Items.Window.Visible = bool
                     if Items.MenuBlocker then Items.MenuBlocker.Visible = bool end
-                end, true)
+                end)
             end
             
             return setmetatable(Cfg, Library)
@@ -1693,8 +1713,8 @@ getgenv().Loaded = true
                 Callback = properties.Callback or function() end;
 
                 
-                Folding = properties.Folding == true;
-                Collapsable = properties.Collapsing ~= false;
+                Folding = properties.Folding or false;
+                Collapsable = properties.Collapsing or true;
 
                 Items = {};
             }
@@ -1791,37 +1811,10 @@ getgenv().Loaded = true
                     Color = rgbseq{rgbkey(0, rgb(85, 85, 85)), rgbkey(1, rgb(60, 60, 60))}
                 });                
             end;
-
-            if Cfg.Folding then
-                Items.GroupElements = Library:Create("Frame", {
-                    Parent = self.Items.Elements;
-                    Name = "\0";
-                    BackgroundTransparency = 1;
-                    Size = dim2(1, 0, 0, 0);
-                    AutomaticSize = Enum.AutomaticSize.Y;
-                    LayoutOrder = Items.Toggle.LayoutOrder;
-                    Visible = not Cfg.Collapsable or Cfg.Enabled;
-                })
-                Items.Elements = Items.GroupElements
-
-                Library:Create("UIListLayout", {
-                    Parent = Items.GroupElements;
-                    Padding = dim(0, 8);
-                    SortOrder = Enum.SortOrder.LayoutOrder;
-                })
-                Library:Create("UIPadding", {
-                    Parent = Items.GroupElements;
-                    PaddingLeft = dim(0, 20);
-                })
-            end
             
             function Cfg.Set(bool)
                 if type(bool) == "boolean" then
                     Cfg.Enabled = bool
-                end
-
-                if Items.GroupElements and Cfg.Collapsable then
-                    Items.GroupElements.Visible = bool == true
                 end
 
                 Flags[Cfg.Flag] = bool
@@ -1851,25 +1844,15 @@ getgenv().Loaded = true
                 Callback = properties.Callback or function() end, 
 
                 
-                Min = properties.Min == nil and 0 or properties.Min,
-                Max = properties.Max == nil and 100 or properties.Max,
-                Intervals = properties.Decimal == nil and 1 or properties.Decimal,
-                Value = properties.Default == nil and 10 or properties.Default,
+                Min = properties.Min or 0,
+                Max = properties.Max or 100,
+                Intervals = properties.Decimal or 1,
+                Value = properties.Default or 10, 
 
                 
                 Dragging = false,
                 Items = {}
             } 
-
-            local function isFinite(number)
-                return type(number) == "number" and number == number and number ~= math.huge and number ~= -math.huge
-            end
-            if not isFinite(Cfg.Min) or not isFinite(Cfg.Max) or Cfg.Min >= Cfg.Max then
-                error("Slider Min and Max must be finite numbers with Min < Max", 2)
-            end
-            if not isFinite(Cfg.Intervals) or Cfg.Intervals <= 0 then
-                error("Slider Decimal must be a finite number greater than 0", 2)
-            end
 
             local Items = Cfg.Items; do
                 Items.Slider = Library:Create( "TextButton" , {
@@ -2008,8 +1991,7 @@ getgenv().Loaded = true
             end 
 
             function Cfg.Set(value)
-                local num = tonumber(value) or (type(value) == "string" and tonumber(value:match("[-%d%.]+"))) or Cfg.Value or Cfg.Min
-                Cfg.Value = math.clamp(Library:Round(num, Cfg.Intervals), Cfg.Min, Cfg.Max)
+                Cfg.Value = math.clamp(Library:Round(value, Cfg.Intervals), Cfg.Min, Cfg.Max)
 
                 Items.Accent.Size = dim2((Cfg.Value - Cfg.Min) / (Cfg.Max - Cfg.Min), Cfg.Value == Cfg.Min and 0 or -2, 1, -2)
                 Items.Value.Text = tostring(Cfg.Value) .. Cfg.Suffix
@@ -2019,7 +2001,7 @@ getgenv().Loaded = true
             end
             
             Items.Holder.MouseButton1Down:Connect(function()
-                Cfg.Dragging = true
+                Cfg.Dragging = true 
             end)
 
             Items.Minus.MouseButton1Down:Connect(function()
@@ -2035,7 +2017,7 @@ getgenv().Loaded = true
             end)
 
             Library:Connection(InputService.InputChanged, function(input)
-                if Cfg.Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                if Cfg.Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then 
                     local Size = (input.Position.X - Items.Holder.AbsolutePosition.X) / Items.Holder.AbsoluteSize.X
                     local Value = ((Cfg.Max - Cfg.Min) * Size) + Cfg.Min
                     Cfg.Set(Value)
@@ -2081,13 +2063,7 @@ getgenv().Loaded = true
                 Ignore = properties.Ignore or false;
             }   
 
-            if properties.Default ~= nil then
-                Cfg.Default = properties.Default
-            elseif Cfg.Multi then
-                Cfg.Default = {}
-            else
-                Cfg.Default = Cfg.Options[1] or "None"
-            end
+            Cfg.Default = properties.Default or (Cfg.Multi and {Cfg.Items[1]}) or Cfg.Items[1] or "None"
             Flags[Cfg.Flag] = Cfg.Default
             
             local Items = Cfg.Items; do 
@@ -2189,19 +2165,18 @@ getgenv().Loaded = true
                 
                     Items.DropdownElements = Library:Create( "Frame" , {
                         Parent = Library.Items;
-                        Size = dim2(0, 132, 0, Cfg.Scrolling and 160 or 47);
+                        Size = dim2(0, 132, 0, 47);
                         Name = "\0";
                         Visible = false;
                         Position = dim2(0.6994267702102661, 0, 0.370685338973999, 0);
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
                         ZIndex = 4;
-                        AutomaticSize = Cfg.Scrolling and Enum.AutomaticSize.None or Enum.AutomaticSize.Y;
+                        AutomaticSize = Enum.AutomaticSize.Y;
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
-
-                    local holderClass = Cfg.Scrolling and "ScrollingFrame" or "Frame"
-                    local holderProperties = {
+                    
+                    Items.DropdownHolder = Library:Create( "Frame" , {
                         Parent = Items.DropdownElements;
                         Name = "\0";
                         Position = dim2(0, 1, 0, 1);
@@ -2210,15 +2185,7 @@ getgenv().Loaded = true
                         Size = dim2(1, -2, 1, -2);
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(35, 35, 35)
-                    }
-                    if Cfg.Scrolling then
-                        holderProperties.Active = true
-                        holderProperties.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                        holderProperties.CanvasSize = dim2(0, 0, 0, 0)
-                        holderProperties.ScrollBarThickness = 4
-                        holderProperties.ScrollBarImageColor3 = rgb(65, 65, 65)
-                    end
-                    Items.DropdownHolder = Library:Create(holderClass, holderProperties)
+                    });
                     
                     Library:Create( "UIPadding" , {
                         PaddingBottom = dim(0, 1);
@@ -2265,13 +2232,12 @@ getgenv().Loaded = true
             end
             
             function Cfg.SetVisible(bool)
-                bool = bool == true
-                if bool then
+                if Library.OpenElement ~= Cfg then 
                     Library:CloseElement(Cfg)
                 end
 
                 Items.DropdownElements.Position = dim2(0, Items.Outline.AbsolutePosition.X, 0, Items.Outline.AbsolutePosition.Y + 80)
-				Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, Cfg.Scrolling and 160 or 0)
+				Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, 0)
                 Items.DropdownElements.Visible = bool
                 Items.DropdownElements.Parent = bool and Library.Items or Library.Other 
 
@@ -2279,15 +2245,7 @@ getgenv().Loaded = true
 
                 Items.Arrow.Rotation = bool and 180 or 0
                 
-                if bool then
-                    Cfg.Open = true
-                    Library.OpenElement = Cfg
-                else
-                    Cfg.Open = false
-                    if Library.OpenElement == Cfg then
-                        Library.OpenElement = nil
-                    end
-                end
+                Library.OpenElement = Cfg
             end
             
             function Cfg.Set(value)
@@ -2297,6 +2255,7 @@ getgenv().Loaded = true
                 for _,option in Cfg.OptionInstances do 
                     if option.Text == value or (IsTable and table.find(value, option.Text)) then 
                         table.insert(Selected, option.Text)
+                        Cfg.MultiItems = Selected
                         option.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal);
                         option.TextColor3 = themes.preset.accent
                         option.BackgroundTransparency = 1
@@ -2305,10 +2264,6 @@ getgenv().Loaded = true
                         option.BackgroundTransparency = 0
                         option.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal);
                     end
-                end
-
-                if Cfg.Multi then
-                    Cfg.MultiItems = Selected
                 end
 
                 local Text = if IsTable then table.concat(Selected, ", ") else Selected[1] or ""
@@ -2331,16 +2286,14 @@ getgenv().Loaded = true
                 Cfg.Callback(Flags[Cfg.Flag]) 
             end
             
-            function Cfg.RefreshOptions(options)
-                local selected = Flags[Cfg.Flag]
+            function Cfg.RefreshOptions(options) 
                 for _,option in Cfg.OptionInstances do 
                     option:Destroy() 
                 end
-
+                
                 Cfg.OptionInstances = {} 
-                Cfg.Options = options or {}
 
-                for _,option in Cfg.Options do
+                for _,option in options do
                     local Button = Cfg.RenderOption(option)
                     
                     Button.MouseButton1Down:Connect(function()
@@ -2355,18 +2308,12 @@ getgenv().Loaded = true
                             
                             Cfg.Set(Cfg.MultiItems) 				
                         else 
+                            Cfg.SetVisible(false)
+                            Cfg.Open = false
+                            
                             Cfg.Set(Button.Text)
                         end
                     end)
-                end
-
-                if Cfg.Multi then
-                    Cfg.Set(type(selected) == "table" and selected or {})
-                else
-                    if not table.find(Cfg.Options, selected) then
-                        selected = Cfg.Options[1] or "None"
-                    end
-                    Cfg.Set(selected)
                 end
             end
 
@@ -2385,10 +2332,11 @@ getgenv().Loaded = true
                 end 
             end)
 
-            Flags[Cfg.Flag] = Cfg.Default
+            Flags[Cfg.Flag] = {}
             ConfigFlags[Cfg.Flag] = Cfg.Set
 
             Cfg.RefreshOptions(Cfg.Options)
+            Cfg.Set(Cfg.Default)
 
             table.insert(Library.OpenPopups, Cfg)
 
@@ -2637,7 +2585,7 @@ getgenv().Loaded = true
                 Mode = properties.Mode or "Toggle";
                 Active = properties.Default or false; 
                 
-                Show = properties.ShowInList ~= false;
+                Show = properties.ShowInList or true;
 
                 Open = false;
                 Binding;
@@ -2650,8 +2598,7 @@ getgenv().Loaded = true
                 Mode = Cfg.Mode,
                 Key = Cfg.Key, 
                 Active = Cfg.Active,
-                Name = Cfg.Name,
-                Show = Cfg.Show
+                Name = Cfg.Name
             }
 
             local Items = Cfg.Items; do 
@@ -2819,18 +2766,16 @@ getgenv().Loaded = true
                 
             end 
 
-            local function ApplyMode(mode)
-                Cfg.Mode = mode
-                if mode == "Always" then
-                    Cfg.Active = true
-                elseif mode == "Hold" then
-                    Cfg.Active = false
-                end
-            end
+            function Cfg.SetMode(mode) 
+                Cfg.Mode = mode 
 
-            function Cfg.SetMode(mode)
-                ApplyMode(mode)
-                Cfg.Set(Cfg.Active)
+                if mode == "Always" then
+                    Cfg.Set(true)
+                elseif mode == "Hold" then
+                    Cfg.Set(false)
+                end
+
+                Flags[Cfg.Flag].Mode = mode
             end
 
             function Cfg.Set(input)
@@ -2844,8 +2789,13 @@ getgenv().Loaded = true
                     input = input.Name == "Escape" and "NONE" or input
                     
                     Cfg.Key = input or "NONE"	
-                elseif table.find({"Toggle", "Hold", "Always"}, input) then
-                    ApplyMode(input)
+                elseif table.find({"Toggle", "Hold", "Always"}, input) then 
+                    if input == "Always" then 
+                        Cfg.Active = true 
+                    end 
+
+                    Cfg.Mode = input
+                    Cfg.SetMode(Cfg.Mode) 
                 elseif type(input) == "table" then
                     local key = input.Key or input.key
                     local mode = input.Mode or input.mode
@@ -2854,7 +2804,7 @@ getgenv().Loaded = true
                         active = input.active
                     end
 
-                    key = type(key) == "string" and key ~= "NONE" and key:find("Enum") and Library:ConvertEnum(key) or key
+                    key = type(key) == "string" and key ~= "NONE" and Library:ConvertEnum(key) or key
                     key = key == Enum.KeyCode.Escape and "NONE" or key
 
                     Cfg.Key = key or "NONE"
@@ -2864,7 +2814,7 @@ getgenv().Loaded = true
                         Cfg.Active = active
                     end
 
-                    ApplyMode(Cfg.Mode)
+                    Cfg.SetMode(Cfg.Mode) 
                 end 
 
                 Cfg.Callback(Cfg.Active)
@@ -2889,8 +2839,7 @@ getgenv().Loaded = true
                     Mode = Cfg.Mode,
                     Key = Cfg.Key, 
                     Active = Cfg.Active,
-                    Name = Cfg.Name,
-                    Show = Cfg.Show
+                    Name = Cfg.Name
                 }
             end
             
@@ -2903,10 +2852,12 @@ getgenv().Loaded = true
                 task.wait()
                 Items.Key.Text = "..."	
 
-                Cfg.Binding = Library:Connection(InputService.InputBegan, function(keycode, game_event)
-                    Cfg.Binding = nil
+                Cfg.Binding = Library:Connection(InputService.InputBegan, function(keycode, game_event)  
                     Cfg.Set(keycode.KeyCode ~= Enum.KeyCode.Unknown and keycode.KeyCode or keycode.UserInputType)
-                end, true)
+                    
+                    Cfg.Binding:Disconnect() 
+                    Cfg.Binding = nil
+                end)
             end)
 
             Items.Keybind.MouseButton2Down:Connect(function()
@@ -3192,8 +3143,7 @@ getgenv().Loaded = true
                 });	Library:Themify(Items.Accent, "accent", "BackgroundColor3")                    
             end 
             
-            Notifications.NextId += 1
-            local index = Notifications.NextId
+            local index = #Notifications.Notifs + 1
             Notifications.Notifs[index] = Items.Outline
 
             
@@ -3564,7 +3514,7 @@ getgenv().Loaded = true
                 local Width = 150
 
                 for _, Entry in ipairs(Cfg.Entries) do
-                    local Plain = (Entry.Key and Entry.Key ~= "" and Entry.Key ~= "?") and string.format("[%s]  %s", tostring(Entry.Key), tostring(Entry.Name)) or tostring(Entry.Name)
+                    local Plain = string.format("[%s]  %s", tostring(Entry.Key), tostring(Entry.Name))
                     local Size = TextService:GetTextSize(Plain, 13, Enum.Font.SourceSans, vec2(10000, 10000))
 
                     if Size.X + 32 > Width then
@@ -3604,7 +3554,7 @@ getgenv().Loaded = true
             function Cfg:Add(name, key)
                 local Entry = {
                     Name = name or "Key";
-                    Key = key or "";
+                    Key = key or "?";
                     Active = false;
                     Row = Library:Create( "TextLabel" , {
                         Parent = Items.Container;
@@ -3624,11 +3574,7 @@ getgenv().Loaded = true
                 function Entry:SetText(newName, newKey)
                     if newName ~= nil then Entry.Name = tostring(newName) end
                     if newKey ~= nil then Entry.Key = tostring(newKey) end
-                    if Entry.Key and Entry.Key ~= "" and Entry.Key ~= "?" then
-                        Entry.Row.Text = string.format('<font color="#%s">[%s]</font>  %s', Accent, Entry.Key, Entry.Name)
-                    else
-                        Entry.Row.Text = Entry.Name
-                    end
+                    Entry.Row.Text = string.format('<font color="#%s">[%s]</font>  %s', Accent, Entry.Key, Entry.Name)
                     Resize()
                     return Entry
                 end
@@ -3672,15 +3618,6 @@ getgenv().Loaded = true
         return setmetatable(Cfg, Library)
     end
 
-    local fpsTimes = {}
-    Library:Connection(RunService.RenderStepped, function()
-        local now = os.clock()
-        table.insert(fpsTimes, now)
-        while #fpsTimes > 0 and fpsTimes[1] < now - 1 do
-            table.remove(fpsTimes, 1)
-        end
-    end)
-
     Library.WatermarkOptions = {
         gamesense = true,
         fps = true,
@@ -3689,7 +3626,7 @@ getgenv().Loaded = true
         config = false,
     }
 
-    function Library:UpdateWatermarkText()
+    function Library:UpdateWatermarkText(dt)
         local opts = Library.WatermarkOptions
         local parts = {}
 
@@ -3702,7 +3639,7 @@ getgenv().Loaded = true
         end
 
         if opts.fps then
-            table.insert(parts, string.format("%dfps", #fpsTimes))
+            table.insert(parts, string.format("%dfps", math.floor(1 / math.max(dt, 1/1000))))
         end
 
         if opts.ping then
@@ -3731,58 +3668,20 @@ getgenv().Loaded = true
 
         if bool and not Library.WatermarkLoop then
             local last = 0
-            local interval = 1 / 120
 
             Library.WatermarkLoop = Library:Connection(RunService.Heartbeat, function(dt)
                 last += dt
 
-                if last < interval then
+                if last < 0.25 then
                     return
                 end
 
-                Library:UpdateWatermarkText()
+                Library:UpdateWatermarkText(last)
                 last = 0
             end)
         elseif not bool and Library.WatermarkLoop then
-            Library:Disconnect(Library.WatermarkLoop)
+            Library.WatermarkLoop:Disconnect()
             Library.WatermarkLoop = nil
-        end
-    end
-
-    local keybindEntries = {}
-    local function updateKeybindList()
-        local kbList = Library.KeybindListInstance
-        if not kbList or not kbList.Visible then
-            return
-        end
-
-        local activeBinds = {}
-        for flag, data in pairs(Library.Flags) do
-            if type(data) == "table" and data.Show ~= false and data.Key and data.Key ~= "NONE" and data.Active then
-                local keyName = tostring(data.Key):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
-                local displayName = data.Name or flag
-                table.insert(activeBinds, { name = displayName, key = keyName, flag = flag })
-            end
-        end
-
-        local changed = #activeBinds ~= #keybindEntries
-        if not changed then
-            for i, b in ipairs(activeBinds) do
-                local cur = keybindEntries[i]
-                if not cur or cur.flag ~= b.flag or cur.key ~= b.key or cur.name ~= b.name then
-                    changed = true
-                    break
-                end
-            end
-        end
-
-        if changed then
-            kbList:Clear()
-            keybindEntries = activeBinds
-            for _, b in ipairs(activeBinds) do
-                local entry = kbList:Add(b.name, b.key)
-                entry:SetStatus(true)
-            end
         end
     end
 
@@ -3792,28 +3691,7 @@ getgenv().Loaded = true
         end
 
         Library.KeybindListInstance:SetVisibility(bool)
-
-        if bool and not Library.KeybindListLoop then
-            local last = 0
-            local interval = 1 / 120
-
-            Library.KeybindListLoop = Library:Connection(RunService.Heartbeat, function(dt)
-                last += dt
-
-                if last < interval then
-                    return
-                end
-
-                updateKeybindList()
-                last = 0
-            end)
-        elseif not bool and Library.KeybindListLoop then
-            Library:Disconnect(Library.KeybindListLoop)
-            Library.KeybindListLoop = nil
-        end
     end
-
-    -- Helpers for callers that want to group controls without auto-creating UI.
     function Library:SetControlVisible(control, visible, itemName)
         local item = control and control.Items and control.Items[itemName]
         if item then
@@ -3841,34 +3719,4 @@ getgenv().Loaded = true
 
         return group
     end
-
-    function Library:Unload()
-        if Library.WatermarkLoop then
-            pcall(function() Library.WatermarkLoop:Disconnect() end)
-            Library.WatermarkLoop = nil
-        end
-        if Library.KeybindListLoop then
-            pcall(function() Library.KeybindListLoop:Disconnect() end)
-            Library.KeybindListLoop = nil
-        end
-        if Library.WatermarkWindow then
-            pcall(function() Library.WatermarkWindow:Destroy() end)
-        end
-        if Library.KeybindsWindow then
-            pcall(function() Library.KeybindsWindow:Destroy() end)
-        end
-        if Library.Items then
-            pcall(function() Library.Items:Destroy() end)
-        end
-        if Library.Other then
-            pcall(function() Library.Other:Destroy() end)
-        end
-        for _, connection in Library.Connections or {} do
-            pcall(function() connection:Disconnect() end)
-        end
-        Library.Connections = {}
-        getgenv().Loaded = false
-        getgenv().Library = nil
-    end
-
 return Library
