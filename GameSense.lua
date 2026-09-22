@@ -28,7 +28,7 @@ getgenv().Loaded = true
     
     local InputService, HttpService, GuiService, RunService, Stats, CoreGui, TweenService, SoundService, Workspace, Players = game:GetService("UserInputService"), game:GetService("HttpService"), game:GetService("GuiService"), game:GetService("RunService"), game:GetService("Stats"), game:GetService("CoreGui"), game:GetService("TweenService"), game:GetService("SoundService"), game:GetService("Workspace"), game:GetService("Players")
     local TextService = game:GetService("TextService")
-    local Camera, lp, gui_offset = Workspace.CurrentCamera, Players.LocalPlayer, GuiService:GetGuiInset().Y
+    local Camera, lp = Workspace.CurrentCamera, Players.LocalPlayer
     local mouse = lp:GetMouse()
 
     
@@ -702,72 +702,26 @@ getgenv().Loaded = true
                 Cfg.Callback(Color, a)
             end
 
-            local LastMouse = nil
-            local HoverCal = nil
-
-            Items.Debug = Library:Create("TextLabel", {
-                Parent = Items.Colorpicker;
-                Size = dim2(1, 0, 0, 12);
-                Position = dim2(0, 0, 0, 0);
-                BackgroundColor3 = rgb(0, 0, 0);
-                BackgroundTransparency = 0.3;
-                TextColor3 = rgb(0, 255, 0);
-                TextSize = 10;
-                FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal);
-                TextXAlignment = Enum.TextXAlignment.Left;
-                Text = "no hover yet";
-                ZIndex = 20000;
-                BorderSizePixel = 0;
-                Name = "\0"
-            });
-
-            local function TrackCal(guiPos)
-                local gl = InputService:GetMouseLocation()
-                HoverCal = {gl = vec2(gl.X, gl.Y), gui = guiPos}
-
-                if Items.Debug then
-                    Items.Debug.Text = string.format(
-                        "MM %d,%d | GL %d,%d | VAL %d,%d %dx%d",
-                        guiPos.X, guiPos.Y,
-                        gl.X, gl.Y,
-                        Items.Val.AbsolutePosition.X, Items.Val.AbsolutePosition.Y,
-                        Items.Val.AbsoluteSize.X, Items.Val.AbsoluteSize.Y
-                    )
-                end
-            end
-
-            Items.Val.MouseMoved:Connect(function(x, y) TrackCal(vec2(x, y)) end)
-            Items.Hue.MouseMoved:Connect(function(x, y) TrackCal(vec2(x, y)) end)
-            Items.Alpha.MouseMoved:Connect(function(x, y) TrackCal(vec2(x, y)) end)
-
             local function MouseGuiPos()
-                if not HoverCal then
-                    return nil
-                end
-
-                local gl = InputService:GetMouseLocation()
-                return HoverCal.gui + (gl - HoverCal.gl)
+                local inset = GuiService:GetGuiInset()
+                return InputService:GetMouseLocation() - inset
             end
 
-            function Cfg.UpdateColor(input)
-                local m = input.Position
+            function Cfg.UpdateColor()
+                local m = MouseGuiPos()
 
-                if LastMouse then
-                    local dx, dy = m.X - LastMouse.X, m.Y - LastMouse.Y
-
-                    if DraggingSat then
-                        s = math.clamp(s + dx / Items.Val.AbsoluteSize.X, 0, 1)
-                        v = math.clamp(v - dy / Items.Val.AbsoluteSize.Y, 0, 1)
-                    elseif DraggingHue then
-                        h = math.clamp(h + dy / Items.Hue.AbsoluteSize.Y, 0, 1)
-                    elseif DraggingAlpha then
-                        a = math.clamp(a + dx / Items.Alpha.AbsoluteSize.X, 0, 1)
-                    end
-
-                    Cfg.Set()
+                if DraggingSat then
+                    s = math.clamp((m.X - Items.Val.AbsolutePosition.X) / Items.Val.AbsoluteSize.X, 0, 1)
+                    v = 1 - math.clamp((m.Y - Items.Val.AbsolutePosition.Y) / Items.Val.AbsoluteSize.Y, 0, 1)
+                elseif DraggingHue then
+                    h = math.clamp((m.Y - Items.Hue.AbsolutePosition.Y) / Items.Hue.AbsoluteSize.Y, 0, 1)
+                elseif DraggingAlpha then
+                    a = math.clamp((m.X - Items.Alpha.AbsolutePosition.X) / Items.Alpha.AbsoluteSize.X, 0, 1)
+                else
+                    return
                 end
 
-                LastMouse = m
+                Cfg.Set()
             end
 
             Items.ColorpickerObject.MouseButton1Click:Connect(function()
@@ -775,21 +729,19 @@ getgenv().Loaded = true
                 Cfg.SetVisible(Cfg.Open)            
             end)
 
-            InputService.InputChanged:Connect(function(input)
+            Library:Connection(InputService.InputChanged, function(input)
                 if (DraggingSat or DraggingHue or DraggingAlpha) and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    Cfg.UpdateColor(input)
+                    Cfg.UpdateColor()
                 end
             end)
 
             local function PickerHover()
-                local m = InputService:GetMouseLocation()
+                local m = MouseGuiPos()
 
-                for _,y in {m.Y, m.Y - gui_offset} do
-                    for _,obj in {Items.ColorpickerObject, Items.Colorpicker} do
-                        local p, s = obj.AbsolutePosition, obj.AbsoluteSize
-                        if p.X <= m.X and m.X <= p.X + s.X and p.Y <= y and y <= p.Y + s.Y then
-                            return true
-                        end
+                for _,obj in {Items.ColorpickerObject, Items.Colorpicker} do
+                    local p, size = obj.AbsolutePosition, obj.AbsoluteSize
+                    if p.X <= m.X and m.X <= p.X + size.X and p.Y <= m.Y and m.Y <= p.Y + size.Y then
+                        return true
                     end
                 end
 
@@ -830,36 +782,17 @@ getgenv().Loaded = true
 
             Items.Alpha.MouseButton1Down:Connect(function()
                 DraggingAlpha = true
-                LastMouse = nil
-
-                local mp = MouseGuiPos()
-                if mp then
-                    a = math.clamp((mp.X - Items.Alpha.AbsolutePosition.X) / Items.Alpha.AbsoluteSize.X, 0, 1)
-                    Cfg.Set()
-                end
+                Cfg.UpdateColor()
             end)
 
             Items.Hue.MouseButton1Down:Connect(function()
                 DraggingHue = true
-                LastMouse = nil
-
-                local mp = MouseGuiPos()
-                if mp then
-                    h = math.clamp((mp.Y - Items.Hue.AbsolutePosition.Y) / Items.Hue.AbsoluteSize.Y, 0, 1)
-                    Cfg.Set()
-                end
+                Cfg.UpdateColor()
             end)
 
             Items.Val.MouseButton1Down:Connect(function()
                 DraggingSat = true
-                LastMouse = nil
-
-                local mp = MouseGuiPos()
-                if mp then
-                    s = math.clamp((mp.X - Items.Val.AbsolutePosition.X) / Items.Val.AbsoluteSize.X, 0, 1)
-                    v = 1 - math.clamp((mp.Y - Items.Val.AbsolutePosition.Y) / Items.Val.AbsoluteSize.Y, 0, 1)
-                    Cfg.Set()
-                end
+                Cfg.UpdateColor()
             end)
 
             Cfg.Set(Cfg.Color, Cfg.Alpha)
