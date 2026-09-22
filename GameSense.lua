@@ -416,6 +416,23 @@ getgenv().Loaded = true
 
             Flags[Cfg.Flag] = {Color = Cfg.Color, Transparency = Cfg.Alpha}
             
+            local function Checkerboard(parent, columns)
+                parent.BackgroundColor3 = rgb(190, 190, 190)
+                for x = 0, columns - 1 do
+                    for y = 0, 1 do
+                        if (x + y) % 2 == 0 then
+                            Library:Create("Frame", {
+                                Parent = parent;
+                                Position = dim2(x / columns, 0, y / 2, 0);
+                                Size = dim2(1 / columns, 0, 0.5, 0);
+                                BorderSizePixel = 0;
+                                BackgroundColor3 = rgb(105, 105, 105)
+                            })
+                        end
+                    end
+                end
+            end
+
             local Items = Cfg.Items; do 
                 
                     Items.ColorpickerObject = Library:Create( "TextButton" , {
@@ -431,9 +448,18 @@ getgenv().Loaded = true
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
                     
+                    Items.ObjectChecker = Library:Create( "Frame" , {
+                        Parent = Items.ColorpickerObject;
+                        Position = dim2(0, 1, 0, 1);
+                        Size = dim2(1, -2, 1, -2);
+                        BorderSizePixel = 0
+                    });
+                    Checkerboard(Items.ObjectChecker, 2)
+
                     Items.InnerObject = Library:Create( "Frame" , {
                         Parent = Items.ColorpickerObject;
                         Name = "\0";
+                        ZIndex = 2;
                         Position = dim2(0, 1, 0, 1);
                         BorderColor3 = rgb(0, 0, 0);
                         Size = dim2(1, -2, 1, -2);
@@ -572,10 +598,19 @@ getgenv().Loaded = true
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(0, 0, 0)
                     });
+
+                    Items.AlphaChecker = Library:Create( "Frame" , {
+                        Parent = Items.Alpha;
+                        Position = dim2(0, 1, 0, 1);
+                        Size = dim2(1, -2, 1, -2);
+                        BorderSizePixel = 0
+                    });
+                    Checkerboard(Items.AlphaChecker, 10)
                     
                     Items.AlphaInline = Library:Create( "Frame" , {
                         Parent = Items.Alpha;
                         Name = "\0";
+                        ZIndex = 2;
                         Position = dim2(0, 1, 0, 1);
                         BorderColor3 = rgb(0, 0, 0);
                         Size = dim2(1, -2, 1, -2);
@@ -594,6 +629,7 @@ getgenv().Loaded = true
                         BorderMode = Enum.BorderMode.Inset;
                         BorderColor3 = rgb(12, 12, 12);
                         Parent = Items.AlphaInline;
+                        ZIndex = 3;
                         BackgroundTransparency = 0.25;
                         Position = dim2(1, 1, 0, 1);
                         Name = "\0";
@@ -690,7 +726,7 @@ getgenv().Loaded = true
                 Items.HuePicker.Position = dim2(0, 1, h, -1)
                 
                 Items.Inner.BackgroundColor3 = hsv(h, 1, 1)
-                Items.AlphaInline.BackgroundColor3 = hsv(h, 1, 1)
+                Items.AlphaInline.BackgroundColor3 = Color
                 Items.InnerObject.BackgroundColor3 = Color
                 Items.InnerObject.BackgroundTransparency = a
 
@@ -1796,7 +1832,7 @@ getgenv().Loaded = true
                     Parent = self.Items.Elements;
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Size = dim2(1, 0, 0, 8);
+                    Size = dim2(1, 0, 0, Cfg.Name and 26 or 8);
                     Selectable = false;
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
