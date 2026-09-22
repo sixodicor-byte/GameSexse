@@ -48,8 +48,8 @@ getgenv().Loaded = true
         Flags = {},
         ConfigFlags = {},
         Connections = {},   
-        Notifications = {Notifs = {}},
-        OpenElement = {};
+        Notifications = {Notifs = {}, NextId = 0},
+        OpenElement = nil;
         OpenPopups = {};
         EasingStyle = Enum.EasingStyle.Quint;
         TweeningSpeed = 0.25
@@ -121,7 +121,7 @@ getgenv().Loaded = true
         [Enum.KeyCode.RightBracket] = "]",
         [Enum.KeyCode.RightParenthesis] = ")",
         [Enum.KeyCode.LeftParenthesis] = "(",
-        [Enum.KeyCode.Semicolon] = ",",
+                [Enum.KeyCode.Semicolon] = ";",
         [Enum.KeyCode.Quote] = "'",
         [Enum.KeyCode.BackSlash] = "\\",
         [Enum.KeyCode.Comma] = ",",
@@ -226,7 +226,7 @@ getgenv().Loaded = true
                     task.wait()
                     obj[prop] = OldTransparency
                 end
-            end)
+            end, true)
 
             return Tween
         end
@@ -414,10 +414,24 @@ getgenv().Loaded = true
             local h, s, v = Cfg.Color:ToHSV() 
             local a = Cfg.Alpha 
 
+            local componentOrder = #self.Items.Components:GetChildren()
+
             Flags[Cfg.Flag] = {Color = Cfg.Color, Transparency = Cfg.Alpha}
             
             local Items = Cfg.Items; do 
-                
+                    Items.ColorpickerLabel = Library:Create( "TextLabel" , {
+                        Parent = self.Items.Components;
+                        Name = "\0";
+                        AutomaticSize = Enum.AutomaticSize.XY;
+                        BackgroundTransparency = 1;
+                        FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+                        Text = Cfg.Name;
+                        TextColor3 = rgb(205, 205, 205);
+                        TextSize = 10;
+                        BorderSizePixel = 0;
+                        LayoutOrder = componentOrder + 1;
+                    });
+
                     Items.ColorpickerObject = Library:Create( "TextButton" , {
                         Active = false;
                         BorderColor3 = rgb(0, 0, 0);
@@ -426,6 +440,7 @@ getgenv().Loaded = true
                         Name = "\0";
                         Parent = self.Items.Components;
                         Size = dim2(0, 17, 0, 9);
+                        LayoutOrder = componentOrder + 2;
                         Selectable = false;
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(12, 12, 12)
@@ -716,7 +731,7 @@ getgenv().Loaded = true
                 Cfg.SetVisible(Cfg.Open)            
             end)
 
-            InputService.InputChanged:Connect(function(input)
+            Library:Connection(InputService.InputChanged, function(input)
                 if (DraggingSat or DraggingHue or DraggingAlpha) and input.UserInputType == Enum.UserInputType.MouseMovement then
                     Cfg.UpdateColor()
                 end
@@ -879,34 +894,47 @@ getgenv().Loaded = true
 
 
 
-        function Library:Connection(signal, callback)
-            local connection = signal:Connect(callback)
-            
-            table.insert(Library.Connections, connection)
+        function Library:Disconnect(connection)
+            if not connection then
+                return false
+            end
 
-            return connection 
+            connection:Disconnect()
+            for i = #Library.Connections, 1, -1 do
+                if Library.Connections[i] == connection then
+                    table.remove(Library.Connections, i)
+                end
+            end
+            return true
         end
 
-        function Library:CloseElement() 
-            local IsMulti = typeof(Library.OpenElement)
+        function Library:Connection(signal, callback, once)
+            local connection
+            connection = signal:Connect(function(...)
+                if once then
+                    Library:Disconnect(connection)
+                end
+                callback(...)
+            end)
 
-            if not Library.OpenElement then 
-                return 
+            table.insert(Library.Connections, connection)
+            return connection
+        end
+
+        function Library:CloseElement(except)
+            local active = Library.OpenElement
+            if not active or active == except or active.Ignore then
+                return
             end
 
-            for i = 1, #Library.OpenElement do
-                local Data = Library.OpenElement[i]
-
-                if Data.Ignore then 
-                    continue 
-                end 
-
-                Data.SetVisible(false)
-                Data.Open = false
+            active.Open = false
+            if active.SetVisible then
+                active.SetVisible(false)
             end
-
-            Library.OpenElement = {}
-		end
+            if Library.OpenElement == active then
+                Library.OpenElement = nil
+            end
+        end
 
         function Library:ClosePopups()
             for _, popup in Library.OpenPopups do
@@ -918,18 +946,23 @@ getgenv().Loaded = true
         end
 
         function Library:Create(instance, options)
-            local ins = Instance.new(instance) 
+            local ins = Instance.new(instance)
+            options = options or {}
+
+            if instance == "TextButton" then
+                if options.AutoButtonColor == nil then
+                    ins.AutoButtonColor = false
+                end
+                if options.Text == nil then
+                    ins.Text = ""
+                end
+            end
 
             for prop, value in options do
                 ins[prop] = value
             end
 
-            if ins == "TextButton" then 
-                ins["AutoButtonColor"] = false 
-                ins["Text"] = ""
-            end 
-            
-            return ins 
+            return ins
         end
 
         function Library:Unload() 
@@ -1041,7 +1074,7 @@ getgenv().Loaded = true
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
                     
-                    Library:Create( "ImageLabel" , {
+                    Items.ImageLabel = Library:Create( "ImageLabel" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = Items.InnerPage;
                         Size = dim2(1, -2, 0, 2);
@@ -1233,7 +1266,7 @@ getgenv().Loaded = true
                     Cfg.Tweening = false
                     Items.Window.Visible = bool
                     if Items.MenuBlocker then Items.MenuBlocker.Visible = bool end
-                end)
+                end, true)
             end
             
             return setmetatable(Cfg, Library)
@@ -1660,8 +1693,8 @@ getgenv().Loaded = true
                 Callback = properties.Callback or function() end;
 
                 
-                Folding = properties.Folding or false;
-                Collapsable = properties.Collapsing or true;
+                Folding = properties.Folding == true;
+                Collapsable = properties.Collapsing ~= false;
 
                 Items = {};
             }
@@ -1758,10 +1791,37 @@ getgenv().Loaded = true
                     Color = rgbseq{rgbkey(0, rgb(85, 85, 85)), rgbkey(1, rgb(60, 60, 60))}
                 });                
             end;
+
+            if Cfg.Folding then
+                Items.GroupElements = Library:Create("Frame", {
+                    Parent = self.Items.Elements;
+                    Name = "\0";
+                    BackgroundTransparency = 1;
+                    Size = dim2(1, 0, 0, 0);
+                    AutomaticSize = Enum.AutomaticSize.Y;
+                    LayoutOrder = Items.Toggle.LayoutOrder;
+                    Visible = not Cfg.Collapsable or Cfg.Enabled;
+                })
+                Items.Elements = Items.GroupElements
+
+                Library:Create("UIListLayout", {
+                    Parent = Items.GroupElements;
+                    Padding = dim(0, 8);
+                    SortOrder = Enum.SortOrder.LayoutOrder;
+                })
+                Library:Create("UIPadding", {
+                    Parent = Items.GroupElements;
+                    PaddingLeft = dim(0, 20);
+                })
+            end
             
             function Cfg.Set(bool)
                 if type(bool) == "boolean" then
                     Cfg.Enabled = bool
+                end
+
+                if Items.GroupElements and Cfg.Collapsable then
+                    Items.GroupElements.Visible = bool == true
                 end
 
                 Flags[Cfg.Flag] = bool
@@ -1791,15 +1851,25 @@ getgenv().Loaded = true
                 Callback = properties.Callback or function() end, 
 
                 
-                Min = properties.Min or 0,
-                Max = properties.Max or 100,
-                Intervals = properties.Decimal or 1,
-                Value = properties.Default or 10, 
+                Min = properties.Min == nil and 0 or properties.Min,
+                Max = properties.Max == nil and 100 or properties.Max,
+                Intervals = properties.Decimal == nil and 1 or properties.Decimal,
+                Value = properties.Default == nil and 10 or properties.Default,
 
                 
                 Dragging = false,
                 Items = {}
             } 
+
+            local function isFinite(number)
+                return type(number) == "number" and number == number and number ~= math.huge and number ~= -math.huge
+            end
+            if not isFinite(Cfg.Min) or not isFinite(Cfg.Max) or Cfg.Min >= Cfg.Max then
+                error("Slider Min and Max must be finite numbers with Min < Max", 2)
+            end
+            if not isFinite(Cfg.Intervals) or Cfg.Intervals <= 0 then
+                error("Slider Decimal must be a finite number greater than 0", 2)
+            end
 
             local Items = Cfg.Items; do
                 Items.Slider = Library:Create( "TextButton" , {
@@ -2011,7 +2081,13 @@ getgenv().Loaded = true
                 Ignore = properties.Ignore or false;
             }   
 
-            Cfg.Default = properties.Default or (Cfg.Multi and {Cfg.Items[1]}) or Cfg.Items[1] or "None"
+            if properties.Default ~= nil then
+                Cfg.Default = properties.Default
+            elseif Cfg.Multi then
+                Cfg.Default = {}
+            else
+                Cfg.Default = Cfg.Options[1] or "None"
+            end
             Flags[Cfg.Flag] = Cfg.Default
             
             local Items = Cfg.Items; do 
@@ -2113,18 +2189,19 @@ getgenv().Loaded = true
                 
                     Items.DropdownElements = Library:Create( "Frame" , {
                         Parent = Library.Items;
-                        Size = dim2(0, 132, 0, 47);
+                        Size = dim2(0, 132, 0, Cfg.Scrolling and 160 or 47);
                         Name = "\0";
                         Visible = false;
                         Position = dim2(0.6994267702102661, 0, 0.370685338973999, 0);
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
                         ZIndex = 4;
-                        AutomaticSize = Enum.AutomaticSize.Y;
+                        AutomaticSize = Cfg.Scrolling and Enum.AutomaticSize.None or Enum.AutomaticSize.Y;
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
-                    
-                    Items.DropdownHolder = Library:Create( "Frame" , {
+
+                    local holderClass = Cfg.Scrolling and "ScrollingFrame" or "Frame"
+                    local holderProperties = {
                         Parent = Items.DropdownElements;
                         Name = "\0";
                         Position = dim2(0, 1, 0, 1);
@@ -2133,7 +2210,15 @@ getgenv().Loaded = true
                         Size = dim2(1, -2, 1, -2);
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(35, 35, 35)
-                    });
+                    }
+                    if Cfg.Scrolling then
+                        holderProperties.Active = true
+                        holderProperties.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        holderProperties.CanvasSize = dim2(0, 0, 0, 0)
+                        holderProperties.ScrollBarThickness = 4
+                        holderProperties.ScrollBarImageColor3 = rgb(65, 65, 65)
+                    end
+                    Items.DropdownHolder = Library:Create(holderClass, holderProperties)
                     
                     Library:Create( "UIPadding" , {
                         PaddingBottom = dim(0, 1);
@@ -2180,12 +2265,13 @@ getgenv().Loaded = true
             end
             
             function Cfg.SetVisible(bool)
-                if Library.OpenElement ~= Cfg then 
+                bool = bool == true
+                if bool then
                     Library:CloseElement(Cfg)
                 end
 
                 Items.DropdownElements.Position = dim2(0, Items.Outline.AbsolutePosition.X, 0, Items.Outline.AbsolutePosition.Y + 80)
-				Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, 0)
+				Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, Cfg.Scrolling and 160 or 0)
                 Items.DropdownElements.Visible = bool
                 Items.DropdownElements.Parent = bool and Library.Items or Library.Other 
 
@@ -2193,7 +2279,15 @@ getgenv().Loaded = true
 
                 Items.Arrow.Rotation = bool and 180 or 0
                 
-                Library.OpenElement = Cfg
+                if bool then
+                    Cfg.Open = true
+                    Library.OpenElement = Cfg
+                else
+                    Cfg.Open = false
+                    if Library.OpenElement == Cfg then
+                        Library.OpenElement = nil
+                    end
+                end
             end
             
             function Cfg.Set(value)
@@ -2203,7 +2297,6 @@ getgenv().Loaded = true
                 for _,option in Cfg.OptionInstances do 
                     if option.Text == value or (IsTable and table.find(value, option.Text)) then 
                         table.insert(Selected, option.Text)
-                        Cfg.MultiItems = Selected
                         option.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal);
                         option.TextColor3 = themes.preset.accent
                         option.BackgroundTransparency = 1
@@ -2212,6 +2305,10 @@ getgenv().Loaded = true
                         option.BackgroundTransparency = 0
                         option.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal);
                     end
+                end
+
+                if Cfg.Multi then
+                    Cfg.MultiItems = Selected
                 end
 
                 local Text = if IsTable then table.concat(Selected, ", ") else Selected[1] or ""
@@ -2234,14 +2331,16 @@ getgenv().Loaded = true
                 Cfg.Callback(Flags[Cfg.Flag]) 
             end
             
-            function Cfg.RefreshOptions(options) 
+            function Cfg.RefreshOptions(options)
+                local selected = Flags[Cfg.Flag]
                 for _,option in Cfg.OptionInstances do 
                     option:Destroy() 
                 end
-                
-                Cfg.OptionInstances = {} 
 
-                for _,option in options do
+                Cfg.OptionInstances = {} 
+                Cfg.Options = options or {}
+
+                for _,option in Cfg.Options do
                     local Button = Cfg.RenderOption(option)
                     
                     Button.MouseButton1Down:Connect(function()
@@ -2260,6 +2359,15 @@ getgenv().Loaded = true
                         end
                     end)
                 end
+
+                if Cfg.Multi then
+                    Cfg.Set(type(selected) == "table" and selected or {})
+                else
+                    if not table.find(Cfg.Options, selected) then
+                        selected = Cfg.Options[1] or "None"
+                    end
+                    Cfg.Set(selected)
+                end
             end
 
             Items.Outline.MouseButton1Click:Connect(function()
@@ -2277,11 +2385,10 @@ getgenv().Loaded = true
                 end 
             end)
 
-            Flags[Cfg.Flag] = {}
+            Flags[Cfg.Flag] = Cfg.Default
             ConfigFlags[Cfg.Flag] = Cfg.Set
 
             Cfg.RefreshOptions(Cfg.Options)
-            Cfg.Set(Cfg.Default)
 
             table.insert(Library.OpenPopups, Cfg)
 
@@ -2530,7 +2637,7 @@ getgenv().Loaded = true
                 Mode = properties.Mode or "Toggle";
                 Active = properties.Default or false; 
                 
-                Show = properties.ShowInList or true;
+                Show = properties.ShowInList ~= false;
 
                 Open = false;
                 Binding;
@@ -2543,7 +2650,8 @@ getgenv().Loaded = true
                 Mode = Cfg.Mode,
                 Key = Cfg.Key, 
                 Active = Cfg.Active,
-                Name = Cfg.Name
+                Name = Cfg.Name,
+                Show = Cfg.Show
             }
 
             local Items = Cfg.Items; do 
@@ -2711,16 +2819,18 @@ getgenv().Loaded = true
                 
             end 
 
-            function Cfg.SetMode(mode) 
-                Cfg.Mode = mode 
-
+            local function ApplyMode(mode)
+                Cfg.Mode = mode
                 if mode == "Always" then
-                    Cfg.Set(true)
+                    Cfg.Active = true
                 elseif mode == "Hold" then
-                    Cfg.Set(false)
+                    Cfg.Active = false
                 end
+            end
 
-                Flags[Cfg.Flag].Mode = mode
+            function Cfg.SetMode(mode)
+                ApplyMode(mode)
+                Cfg.Set(Cfg.Active)
             end
 
             function Cfg.Set(input)
@@ -2734,13 +2844,8 @@ getgenv().Loaded = true
                     input = input.Name == "Escape" and "NONE" or input
                     
                     Cfg.Key = input or "NONE"	
-                elseif table.find({"Toggle", "Hold", "Always"}, input) then 
-                    if input == "Always" then 
-                        Cfg.Active = true 
-                    end 
-
-                    Cfg.Mode = input
-                    Cfg.SetMode(Cfg.Mode) 
+                elseif table.find({"Toggle", "Hold", "Always"}, input) then
+                    ApplyMode(input)
                 elseif type(input) == "table" then
                     local key = input.Key or input.key
                     local mode = input.Mode or input.mode
@@ -2759,7 +2864,7 @@ getgenv().Loaded = true
                         Cfg.Active = active
                     end
 
-                    Cfg.SetMode(Cfg.Mode) 
+                    ApplyMode(Cfg.Mode)
                 end 
 
                 Cfg.Callback(Cfg.Active)
@@ -2784,7 +2889,8 @@ getgenv().Loaded = true
                     Mode = Cfg.Mode,
                     Key = Cfg.Key, 
                     Active = Cfg.Active,
-                    Name = Cfg.Name
+                    Name = Cfg.Name,
+                    Show = Cfg.Show
                 }
             end
             
@@ -2797,12 +2903,10 @@ getgenv().Loaded = true
                 task.wait()
                 Items.Key.Text = "..."	
 
-                Cfg.Binding = Library:Connection(InputService.InputBegan, function(keycode, game_event)  
-                    Cfg.Set(keycode.KeyCode ~= Enum.KeyCode.Unknown and keycode.KeyCode or keycode.UserInputType)
-                    
-                    Cfg.Binding:Disconnect() 
+                Cfg.Binding = Library:Connection(InputService.InputBegan, function(keycode, game_event)
                     Cfg.Binding = nil
-                end)
+                    Cfg.Set(keycode.KeyCode ~= Enum.KeyCode.Unknown and keycode.KeyCode or keycode.UserInputType)
+                end, true)
             end)
 
             Items.Keybind.MouseButton2Down:Connect(function()
@@ -3088,7 +3192,8 @@ getgenv().Loaded = true
                 });	Library:Themify(Items.Accent, "accent", "BackgroundColor3")                    
             end 
             
-            local index = #Notifications.Notifs + 1
+            Notifications.NextId += 1
+            local index = Notifications.NextId
             Notifications.Notifs[index] = Items.Outline
 
             
@@ -3639,7 +3744,7 @@ getgenv().Loaded = true
                 last = 0
             end)
         elseif not bool and Library.WatermarkLoop then
-            Library.WatermarkLoop:Disconnect()
+            Library:Disconnect(Library.WatermarkLoop)
             Library.WatermarkLoop = nil
         end
     end
@@ -3653,7 +3758,7 @@ getgenv().Loaded = true
 
         local activeBinds = {}
         for flag, data in pairs(Library.Flags) do
-            if type(data) == "table" and data.Key and data.Key ~= "NONE" and data.Active then
+            if type(data) == "table" and data.Show ~= false and data.Key and data.Key ~= "NONE" and data.Active then
                 local keyName = tostring(data.Key):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
                 local displayName = data.Name or flag
                 table.insert(activeBinds, { name = displayName, key = keyName, flag = flag })
@@ -3703,7 +3808,7 @@ getgenv().Loaded = true
                 last = 0
             end)
         elseif not bool and Library.KeybindListLoop then
-            Library.KeybindListLoop:Disconnect()
+            Library:Disconnect(Library.KeybindListLoop)
             Library.KeybindListLoop = nil
         end
     end
@@ -3761,6 +3866,7 @@ getgenv().Loaded = true
         for _, connection in Library.Connections or {} do
             pcall(function() connection:Disconnect() end)
         end
+        Library.Connections = {}
         getgenv().Loaded = false
         getgenv().Library = nil
     end
