@@ -593,8 +593,8 @@ getgenv().Loaded = true
                         AutoButtonColor = false;
                         Parent = Items.Inline;
                         Name = "\0";
-                        Position = dim2(0, 0, 1, -12);
-                        Size = dim2(1, -20, 0, 12);
+                        Position = dim2(0, 0, 1, -10);
+                        Size = dim2(1, -20, 0, 8);
                         Selectable = false;
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(0, 0, 0)
@@ -1879,7 +1879,7 @@ getgenv().Loaded = true
                     Name = "\0";
                     Position = dim2(0, 20, 0, Cfg.Name and 14 or 0);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -55, 0, 7);
+                    Size = dim2(1, -65, 0, 6);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(12, 12, 12)
                 });
@@ -2150,18 +2150,18 @@ getgenv().Loaded = true
                 
                     Items.DropdownElements = Library:Create( "Frame" , {
                         Parent = Library.Items;
-                        Size = dim2(0, 132, 0, 47);
+                        Size = Cfg.Scrolling and dim2(0, 132, 0, 180) or dim2(0, 132, 0, 47);
                         Name = "\0";
                         Visible = false;
                         Position = dim2(0.6994267702102661, 0, 0.370685338973999, 0);
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
                         ZIndex = 4;
-                        AutomaticSize = Enum.AutomaticSize.Y;
+                        AutomaticSize = Cfg.Scrolling and Enum.AutomaticSize.None or Enum.AutomaticSize.Y;
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
                     
-                    Items.DropdownHolder = Library:Create( "Frame" , {
+                    Items.DropdownHolder = Library:Create( Cfg.Scrolling and "ScrollingFrame" or "Frame" , {
                         Parent = Items.DropdownElements;
                         Name = "\0";
                         Position = dim2(0, 1, 0, 1);
@@ -2171,6 +2171,13 @@ getgenv().Loaded = true
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(35, 35, 35)
                     });
+
+                    if Cfg.Scrolling then
+                        Items.DropdownHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        Items.DropdownHolder.CanvasSize = dim2(0, 0, 0, 0)
+                        Items.DropdownHolder.ScrollingEnabled = true
+                        Items.DropdownHolder.ScrollBarThickness = 3
+                    end
                     
                     Library:Create( "UIPadding" , {
                         PaddingBottom = dim(0, 1);
@@ -2222,7 +2229,7 @@ getgenv().Loaded = true
                 end
 
                 Items.DropdownElements.Position = dim2(0, Items.Outline.AbsolutePosition.X, 0, Items.Outline.AbsolutePosition.Y + 80)
-				Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, 0)
+                Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, Cfg.Scrolling and 180 or 0)
                 Items.DropdownElements.Visible = bool
                 Items.DropdownElements.Parent = bool and Library.Items or Library.Other 
 
