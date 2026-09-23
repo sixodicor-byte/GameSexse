@@ -48,6 +48,7 @@ getgenv().Loaded = true
         Flags = {},
         ConfigFlags = {},
         Connections = {},   
+        AccentTweens = {},
         Notifications = {Notifs = {}},
         OpenElement = {};
         OpenPopups = {};
@@ -954,7 +955,32 @@ getgenv().Loaded = true
             return ins 
         end
 
+        function Library:AnimatedAccent(parent, position, size, zIndex)
+            local clip = Library:Create("Frame", {
+                Parent = parent;
+                Position = position;
+                Size = size;
+                BackgroundTransparency = 1;
+                BorderSizePixel = 0;
+                ClipsDescendants = true;
+                ZIndex = zIndex;
+            })
+            local image = Library:Create("ImageLabel", {
+                Parent = clip;
+                Size = dim2(1.15, 0, 1, 0);
+                Image = "rbxassetid://8508019876";
+                BackgroundTransparency = 1;
+                BorderSizePixel = 0;
+                ZIndex = zIndex;
+            })
+            table.insert(Library.AccentTweens, Library:Tween(image, {Position = dim2(-0.15, 0, 0, 0)}, TweenInfo.new(16, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)))
+            return clip
+        end
+
         function Library:Unload() 
+            for _, tween in Library.AccentTweens do
+                tween:Cancel()
+            end
             if Library.Items then 
                 Library.Items:Destroy()
             end
@@ -1063,17 +1089,7 @@ getgenv().Loaded = true
                         BackgroundColor3 = rgb(12, 12, 12)
                     });
                     
-                    Library:Create( "ImageLabel" , {
-                        BorderColor3 = rgb(0, 0, 0);
-                        Parent = Items.InnerPage;
-                        Size = dim2(1, -2, 0, 2);
-                        Image = "rbxassetid://8508019876";
-                        BackgroundTransparency = 1;
-                        Position = dim2(0, 1, 0, 1);
-                        ZIndex = 3;
-                        BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(0, 0, 0)
-                    });
+                    Library:AnimatedAccent(Items.InnerPage, dim2(0, 1, 0, 1), dim2(1, -2, 0, 2), 3)
                     
                     Items.Fillbar = Library:Create( "Frame" , {
                         Parent = Items.ImageLabel;
@@ -3237,16 +3253,7 @@ getgenv().Loaded = true
                     ZIndex = 14;
                 });
 
-                Library:Create( "ImageLabel" , {
-                    Parent = Background;
-                    Name = "\0";
-                    Size = dim2(1, 0, 0, 2);
-                    Position = dim2(0, 0, 0, 0);
-                    Image = "rbxassetid://8508019876";
-                    BackgroundTransparency = 1;
-                    BorderSizePixel = 0;
-                    ZIndex = 15;
-                });
+                Library:AnimatedAccent(Background, dim2(0, 0, 0, 0), dim2(1, 0, 0, 2), 15)
 
                 Items.Text = Library:Create( "TextLabel" , {
                     Parent = Background;
@@ -3474,16 +3481,7 @@ getgenv().Loaded = true
                     ZIndex = 14;
                 });
 
-                Library:Create( "ImageLabel" , {
-                    Parent = Items.Background;
-                    Name = " ";
-                    Size = dim2(1, 0, 0, 2);
-                    Position = dim2(0, 0, 0, 0);
-                    Image = "rbxassetid://8508019876";
-                    BackgroundTransparency = 1;
-                    BorderSizePixel = 0;
-                    ZIndex = 15;
-                });
+                Library:AnimatedAccent(Items.Background, dim2(0, 0, 0, 0), dim2(1, 0, 0, 2), 15)
 
                 Items.Title = Library:Create( "TextLabel" , {
                     Parent = Items.Background;
