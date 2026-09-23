@@ -2300,9 +2300,6 @@ getgenv().Loaded = true
                             
                             Cfg.Set(Cfg.MultiItems) 				
                         else 
-                            Cfg.SetVisible(false)
-                            Cfg.Open = false
-                            
                             Cfg.Set(Button.Text)
                         end
                     end)
@@ -2317,7 +2314,7 @@ getgenv().Loaded = true
 
             Library:Connection(InputService.InputBegan, function(input, game_event)
                 if Cfg.Open and input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    if not Library:Hovering({Items.DropdownElements, Items.Dropdown}) then
+                    if not Library:Hovering({Items.Dropdown, Items.DropdownElements, Items.DropdownHolder}) then
                         Cfg.SetVisible(false)
                         Cfg.Open = false
                     end 
