@@ -1,6 +1,6 @@
 
 
-print("123")
+
 
 
 
@@ -796,7 +796,7 @@ getgenv().Loaded = true
                         return
                     end
 
-                    if not PickerHover() then
+                    if Cfg.Open and not PickerHover() then
                         Cfg.SetVisible(false)
                         Cfg.Open = false
                     end
@@ -804,7 +804,7 @@ getgenv().Loaded = true
             end)
 
             Library:Connection(InputService.InputBegan, function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if Cfg.Open and input.UserInputType == Enum.UserInputType.MouseButton1 then
                     if DraggingSat or DraggingHue or DraggingAlpha then
                         return
                     end
@@ -2293,7 +2293,7 @@ getgenv().Loaded = true
             end)
 
             Library:Connection(InputService.InputBegan, function(input, game_event)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if Cfg.Open and input.UserInputType == Enum.UserInputType.MouseButton1 then
                     if not Library:Hovering({Items.DropdownElements, Items.Dropdown}) then
                         Cfg.SetVisible(false)
                         Cfg.Open = false
@@ -3144,7 +3144,9 @@ getgenv().Loaded = true
             local Cfg = {
                 Items = {};
                 Visible = false;
-                Title = title or "gamesense";
+                Title = tostring(title or "gamesense");
+                Custom = title ~= nil;
+                Elements = {};
             }
 
             local Items = Cfg.Items; do
@@ -3296,7 +3298,33 @@ getgenv().Loaded = true
             end
 
             function Cfg:SetText(text)
-                Items.Text.Text = tostring(text)
+                Cfg.Title = tostring(text)
+                Items.Text.Text = Cfg.Title
+            end
+
+            function Cfg:AddElement(id, value)
+                id = tostring(id)
+                Cfg.Custom = true
+
+                for _, element in Cfg.Elements do
+                    if element.Id == id then
+                        element.Value = value
+                        return Cfg
+                    end
+                end
+
+                table.insert(Cfg.Elements, {Id = id, Value = value})
+                return Cfg
+            end
+
+            function Cfg:RemoveElement(id)
+                for index, element in Cfg.Elements do
+                    if element.Id == tostring(id) then
+                        table.remove(Cfg.Elements, index)
+                        break
+                    end
+                end
+                return Cfg
             end
 
             function Cfg:SetVisibility(bool)
@@ -3306,11 +3334,36 @@ getgenv().Loaded = true
             end
 
             function Cfg:Toggle()
-                return Cfg:SetVisibility(not Cfg.Visible)
+                if Cfg.Visible then
+                    return Cfg:Hide()
+                end
+                return Cfg:Show()
             end
 
-            Library.WatermarkWindow = Items.Window
-            Library.WatermarkText = Items.Text
+            function Cfg:Show()
+                if Library.WatermarkInstance and Library.WatermarkInstance ~= Cfg then
+                    Library.WatermarkInstance:SetVisibility(false)
+                end
+                Library.WatermarkInstance = Cfg
+                Library.WatermarkWindow = Items.Window
+                Library.WatermarkText = Items.Text
+                Library:ToggleWatermark(true)
+                return true
+            end
+
+            function Cfg:Hide()
+                if Library.WatermarkInstance == Cfg then
+                    Library:ToggleWatermark(false)
+                else
+                    Cfg:SetVisibility(false)
+                end
+                return false
+            end
+
+            if not Library.WatermarkInstance then
+                Library.WatermarkWindow = Items.Window
+                Library.WatermarkText = Items.Text
+            end
 
             return setmetatable(Cfg, Library)
         end
@@ -3595,36 +3648,66 @@ getgenv().Loaded = true
         config = false,
     }
 
-    function Library:UpdateWatermarkText(dt)
-        local opts = Library.WatermarkOptions
-        local parts = {}
-
-        if opts.gamesense then
-            table.insert(parts, "gamesense")
-        end
-
-        if opts.config then
-            table.insert(parts, tostring(Library.ConfigName or "none"))
-        end
-
-        if opts.fps then
-            table.insert(parts, string.format("%dfps", math.floor(1 / math.max(dt, 1/1000))))
-        end
-
-        if opts.ping then
+    local function WatermarkValue(id, fps)
+        if id == "fps" then
+            return string.format("%dfps", math.floor(fps))
+        elseif id == "ping" then
             local ok, ping = pcall(function()
                 return Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
             end)
-
-            table.insert(parts, ok and string.format("%dms", math.floor(ping)) or "0ms")
+            return ok and string.format("%dms", math.floor(ping)) or "0ms"
+        elseif id == "time" then
+            return os.date("%H:%M:%S")
+        elseif id == "config" or id == "cfg" then
+            return tostring(Library.ConfigName or "none")
         end
+    end
 
-        if opts.time then
-            table.insert(parts, os.date("%H:%M:%S"))
+    function Library:UpdateWatermarkText(dt)
+        local opts = Library.WatermarkOptions
+        local instance = Library.WatermarkInstance
+        local parts = {}
+        local fps = 1 / math.max(dt or 1/60, 1/1000)
+
+        if instance and instance.Custom then
+            if instance.Title ~= "" then
+                table.insert(parts, instance.Title)
+            end
+            for _, element in instance.Elements do
+                local value = element.Value
+                if value == nil then
+                    value = WatermarkValue(element.Id, fps) or element.Id
+                elseif type(value) == "function" then
+                    local ok, result = pcall(value, fps)
+                    value = ok and result or nil
+                end
+                if value ~= nil and value ~= false and tostring(value) ~= "" then
+                    table.insert(parts, tostring(value))
+                end
+            end
+        else
+            if opts.gamesense then
+                table.insert(parts, instance and instance.Title or "gamesense")
+            end
+            if opts.config then
+                table.insert(parts, WatermarkValue("config", fps))
+            end
+            if opts.fps then
+                table.insert(parts, WatermarkValue("fps", fps))
+            end
+            if opts.ping then
+                table.insert(parts, WatermarkValue("ping", fps))
+            end
+            if opts.time then
+                table.insert(parts, WatermarkValue("time", fps))
+            end
         end
 
         if Library.WatermarkText then
-            Library.WatermarkText.Text = table.concat(parts, " | ")
+            local text = table.concat(parts, " | ")
+            if Library.WatermarkText.Text ~= text then
+                Library.WatermarkText.Text = text
+            end
         end
     end
 
@@ -3636,20 +3719,26 @@ getgenv().Loaded = true
         Library.WatermarkInstance:SetVisibility(bool)
 
         if bool and not Library.WatermarkLoop then
-            local last = 0
+            local elapsed, frames = 0, 0
 
             Library.WatermarkLoop = Library:Connection(RunService.Heartbeat, function(dt)
-                last += dt
+                elapsed += dt
+                frames += 1
 
-                if last < 0.25 then
+                if elapsed < 0.25 then
                     return
                 end
 
-                Library:UpdateWatermarkText(last)
-                last = 0
+                Library:UpdateWatermarkText(elapsed / frames)
+                elapsed, frames = 0, 0
             end)
         elseif not bool and Library.WatermarkLoop then
-            Library.WatermarkLoop:Disconnect()
+            local connection = Library.WatermarkLoop
+            connection:Disconnect()
+            local index = table.find(Library.Connections, connection)
+            if index then
+                table.remove(Library.Connections, index)
+            end
             Library.WatermarkLoop = nil
         end
     end
