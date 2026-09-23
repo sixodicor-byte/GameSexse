@@ -1002,7 +1002,7 @@ getgenv().Loaded = true
         function Library:Window(properties)
             local Cfg = {
                 Name = properties.Name or "nebula";
-                Size = properties.Size or dim2(0, 630, 0, 674);
+                Size = properties.Size or dim2(0, 660, 0, 674);
                 TabInfo;
                 Tweening = false;
                 Items = {};
