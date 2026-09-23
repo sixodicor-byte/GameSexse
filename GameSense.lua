@@ -399,7 +399,7 @@ getgenv().Loaded = true
                 Callback = properties.Callback or function() end,
 
                 Color = properties.Color or color(1, 1, 1), 
-                Alpha = properties.Alpha or properties.Transparency or 0,
+                Alpha = math.clamp(tonumber(properties.DefaultTransparency or properties.Transparency or properties.Alpha) or 0, 0, 1),
                 
                 Mode = properties.Mode or "Keypicker"; 
 
@@ -632,7 +632,7 @@ getgenv().Loaded = true
                         Parent = Items.AlphaInline;
                         ZIndex = 3;
                         BackgroundTransparency = 0.25;
-                        Position = dim2(1, 1, 0, 1);
+                        Position = dim2(0, -1, 0, 1);
                         Name = "\0";
                         Size = dim2(0, 2, 1, -2);
                         BorderSizePixel = 0;
@@ -716,8 +716,8 @@ getgenv().Loaded = true
                     h, s, v = color:ToHSV()
                 end
                 
-                if alpha then 
-                    a = alpha
+                if alpha ~= nil then 
+                    a = math.clamp(tonumber(alpha) or 0, 0, 1)
                 end 
                 
                 local Color = hsv(h, s, v)
@@ -2405,7 +2405,7 @@ getgenv().Loaded = true
                 Callback = properties.Callback or function() end,
 
                 Color = properties.Color or color(1, 1, 1), 
-                Alpha = properties.Alpha or properties.Transparency or 0,
+                Alpha = math.clamp(tonumber(properties.DefaultTransparency or properties.Transparency or properties.Alpha) or 0, 0, 1),
                 
                 
                 Open = false;
