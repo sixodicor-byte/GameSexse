@@ -47,6 +47,7 @@ getgenv().Loaded = true
         },
         Flags = {},
         ConfigFlags = {},
+        KeybindRegistry = {},
         Connections = {},   
         AccentTweens = {},
         Notifications = {Notifs = {}},
@@ -2564,17 +2565,49 @@ getgenv().Loaded = true
             return setmetatable(Cfg, Library)
         end
 
+        function Library:RefreshKeybindList()
+            local list = self.KeybindListInstance
+            if not list then return end
+
+            for _, bind in ipairs(self.KeybindRegistry) do
+                local key = bind.Key
+                local show = bind.Show and key ~= nil and key ~= "NONE"
+                    and key ~= Enum.KeyCode.Unknown and key ~= Enum.UserInputType.None
+                if show then
+                    local keyName = Keys[key] or tostring(key):gsub("^Enum%.KeyCode%.", ""):gsub("^Enum%.UserInputType%.", "")
+                    local name = bind.ListName or bind.Name or bind.Flag
+                    if not bind.ListName and name == "Enable" then
+                        name = tostring(bind.Flag):gsub("Bind$", "")
+                    end
+                    name = tostring(name):gsub("(%l)(%u)", "%1 %2")
+
+                    local entry = bind.ListEntry
+                    if not entry or not entry.Row or not entry.Row.Parent then
+                        entry = list:Add(name, keyName)
+                        bind.ListEntry = entry
+                    elseif entry.Name ~= name or entry.Key ~= keyName then
+                        entry:SetText(name, keyName)
+                    end
+                    entry:SetStatus(bind.Active)
+                elseif bind.ListEntry then
+                    bind.ListEntry:Remove()
+                    bind.ListEntry = nil
+                end
+            end
+        end
+
         function Library:Keybind(properties) 
             local Cfg = {
                 Flag = properties.Flag or properties.Name;
                 Callback = properties.Callback or function() end;
                 Name = properties.Name or nil; 
+                ListName = properties.ListName or nil;
 
                 Key = properties.Key or nil;
                 Mode = properties.Mode or "Toggle";
                 Active = properties.Default or false; 
                 
-                Show = properties.ShowInList or true;
+                Show = properties.ShowInList ~= false;
 
                 Open = false;
                 Binding;
@@ -2830,6 +2863,7 @@ getgenv().Loaded = true
                     Active = Cfg.Active,
                     Name = Cfg.Name
                 }
+                Library:RefreshKeybindList()
             end
             
             function Cfg.SetVisible(bool)
@@ -2891,6 +2925,7 @@ getgenv().Loaded = true
                 end
             end)
             
+            table.insert(Library.KeybindRegistry, Cfg)
             Cfg.Set({Mode = Cfg.Mode, Active = Cfg.Active, Key = Cfg.Key})
             ConfigFlags[Cfg.Flag] = Cfg.Set
 
@@ -3609,6 +3644,14 @@ getgenv().Loaded = true
                     return Entry.Active
                 end
 
+                function Entry:Remove()
+                    local index = table.find(Cfg.Entries, Entry)
+                    if index then table.remove(Cfg.Entries, index) end
+                    Entry.Row:Destroy()
+                    Entry.Row = nil
+                    Resize()
+                end
+
                 table.insert(Cfg.Entries, Entry)
                 Entry:SetText(Entry.Name, Entry.Key)
 
@@ -3750,6 +3793,7 @@ getgenv().Loaded = true
             Library.KeybindListInstance = Library:KeybindList()
         end
 
+        Library:RefreshKeybindList()
         Library.KeybindListInstance:SetVisibility(bool)
     end
     function Library:SetControlVisible(control, visible, itemName)
