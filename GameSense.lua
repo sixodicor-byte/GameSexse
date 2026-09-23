@@ -56,6 +56,25 @@ getgenv().Loaded = true
         TweeningSpeed = 0.25
     }
 
+    local UI_SCALE = 1.25
+
+    local function scaledUDim(value)
+        return dim(value.Scale, math.round(value.Offset * UI_SCALE))
+    end
+
+    local function scaledUDim2(value)
+        return dim2(value.X.Scale, math.round(value.X.Offset * UI_SCALE), value.Y.Scale, math.round(value.Y.Offset * UI_SCALE))
+    end
+
+    local function isScaledUI(parent)
+        while parent do
+            if parent:GetAttribute("UIElementScale") then
+                return true
+            end
+            parent = parent.Parent
+        end
+        return false
+    end
     local themes = {
         preset = {
             inline = rgb(50, 50, 50);
@@ -477,6 +496,7 @@ getgenv().Loaded = true
                 
                 
                     Items.Colorpicker = Library:Create( "TextButton" , {
+                        ScaleUI = true;
                         Active = false;
                         BorderColor3 = rgb(0, 0, 0);
                         Text = "";
@@ -704,7 +724,7 @@ getgenv().Loaded = true
             function Cfg.SetVisible(bool)
                 Items.Colorpicker.Visible = bool
                 Items.Colorpicker.Parent = bool and Library.Items or Library.Other
-                Items.Colorpicker.Position = dim2(0, Items.ColorpickerObject.AbsolutePosition.X, 0, Items.ColorpickerObject.AbsolutePosition.Y + 74)
+                Items.Colorpicker.Position = dim2(0, Items.ColorpickerObject.AbsolutePosition.X, 0, Items.ColorpickerObject.AbsolutePosition.Y + 74 * UI_SCALE)
             end
             
             function Cfg.Set(color, alpha)
@@ -941,10 +961,24 @@ getgenv().Loaded = true
         end
 
         function Library:Create(instance, options)
-            local ins = Instance.new(instance) 
+            local ins = Instance.new(instance)
+            local scale = options.ScaleUI == true or isScaledUI(options.Parent) 
 
             for prop, value in options do
-                ins[prop] = value
+                if prop == "ScaleUI" then
+                    ins:SetAttribute("UIElementScale", value == true)
+                elseif scale then
+                    if prop == "Size" or prop == "Position" or prop == "CanvasSize" or prop == "TileSize" or prop == "CellSize" or prop == "CellPadding" then
+                        value = scaledUDim2(value)
+                    elseif prop == "Padding" or prop == "PaddingTop" or prop == "PaddingBottom" or prop == "PaddingLeft" or prop == "PaddingRight" or prop == "CornerRadius" then
+                        value = scaledUDim(value)
+                    elseif prop == "TextSize" or prop == "ScrollBarThickness" or prop == "Thickness" or prop == "BorderSizePixel" then
+                        value = math.round(value * UI_SCALE)
+                    end
+                    ins[prop] = value
+                else
+                    ins[prop] = value
+                end
             end
 
             if ins == "TextButton" then 
@@ -1036,6 +1070,7 @@ getgenv().Loaded = true
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(12, 12, 12)
                     }); Items.Window.Position = dim2(0, Items.Window.AbsolutePosition.X, 0, Items.Window.AbsolutePosition.Y);
+                    Items.Window:SetAttribute("UIElementScale", true)
                     
                     Items.MenuBlocker = Library:Create("TextButton", {
                         Parent = Library.Items;
@@ -1978,7 +2013,7 @@ getgenv().Loaded = true
             function Cfg.Set(value)
                 Cfg.Value = math.clamp(Library:Round(value, Cfg.Intervals), Cfg.Min, Cfg.Max)
 
-                Items.Accent.Size = dim2((Cfg.Value - Cfg.Min) / (Cfg.Max - Cfg.Min), Cfg.Value == Cfg.Min and 0 or -2, 1, -2)
+                Items.Accent.Size = dim2((Cfg.Value - Cfg.Min) / (Cfg.Max - Cfg.Min), Cfg.Value == Cfg.Min and 0 or -2 * UI_SCALE, 1, -2 * UI_SCALE)
                 Items.Value.Text = tostring(Cfg.Value) .. Cfg.Suffix
 
                 Flags[Cfg.Flag] = Cfg.Value
@@ -2149,6 +2184,7 @@ getgenv().Loaded = true
                 
                 
                     Items.DropdownElements = Library:Create( "Frame" , {
+                        ScaleUI = true;
                         Parent = Library.Items;
                         Size = Cfg.Scrolling and dim2(0, 132, 0, 180) or dim2(0, 132, 0, 47);
                         Name = "\0";
@@ -2176,7 +2212,7 @@ getgenv().Loaded = true
                         Items.DropdownHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
                         Items.DropdownHolder.CanvasSize = dim2(0, 0, 0, 0)
                         Items.DropdownHolder.ScrollingEnabled = true
-                        Items.DropdownHolder.ScrollBarThickness = 3
+                        Items.DropdownHolder.ScrollBarThickness = 3 * UI_SCALE
                     end
                     
                     Library:Create( "UIPadding" , {
@@ -2228,8 +2264,8 @@ getgenv().Loaded = true
                     Library:CloseElement(Cfg)
                 end
 
-                Items.DropdownElements.Position = dim2(0, Items.Outline.AbsolutePosition.X, 0, Items.Outline.AbsolutePosition.Y + 80)
-                Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, Cfg.Scrolling and 180 or 0)
+                Items.DropdownElements.Position = dim2(0, Items.Outline.AbsolutePosition.X, 0, Items.Outline.AbsolutePosition.Y + 80 * UI_SCALE)
+                Items.DropdownElements.Size = dim_offset(Items.Outline.AbsoluteSize.X + 1, Cfg.Scrolling and 180 * UI_SCALE or 0)
                 Items.DropdownElements.Visible = bool
                 Items.DropdownElements.Parent = bool and Library.Items or Library.Other 
 
@@ -2261,10 +2297,10 @@ getgenv().Loaded = true
                 local Text = if IsTable then table.concat(Selected, ", ") else Selected[1] or ""
 
                 pcall(function()
-                    local MaxWidth = Items.Accent.AbsoluteSize.X - 22
+                    local MaxWidth = Items.Accent.AbsoluteSize.X - 22 * UI_SCALE
 
-                    if MaxWidth > 0 and TextService:GetTextSize(Text, 13, Enum.Font.SourceSans, vec2(10000, 10000)).X > MaxWidth then
-                        while #Text > 1 and TextService:GetTextSize(Text .. "...", 13, Enum.Font.SourceSans, vec2(10000, 10000)).X > MaxWidth do
+                    if MaxWidth > 0 and TextService:GetTextSize(Text, 13 * UI_SCALE, Enum.Font.SourceSans, vec2(10000, 10000)).X > MaxWidth then
+                        while #Text > 1 and TextService:GetTextSize(Text .. "...", 13 * UI_SCALE, Enum.Font.SourceSans, vec2(10000, 10000)).X > MaxWidth do
                             Text = string.sub(Text, 1, #Text - 1)
                         end
 
@@ -2621,6 +2657,7 @@ getgenv().Loaded = true
                 
                 
                     Items.KeybindOutline = Library:Create( "Frame" , {
+                        ScaleUI = true;
                         Parent = Library.Items;
                         Visible = false;
                         Size = dim2(0, 100, 0, 22);
@@ -2834,7 +2871,7 @@ getgenv().Loaded = true
             
             function Cfg.SetVisible(bool)
                 Items.KeybindOutline.Visible = bool 
-                Items.KeybindOutline.Position = dim2(0, Items.Keybind.AbsolutePosition.X - 50, 0, Items.Keybind.AbsolutePosition.Y + 20)
+                Items.KeybindOutline.Position = dim2(0, Items.Keybind.AbsolutePosition.X - 50 * UI_SCALE, 0, Items.Keybind.AbsolutePosition.Y + 20 * UI_SCALE)
             end
 
             Items.Keybind.MouseButton1Down:Connect(function()
